@@ -1,0 +1,34 @@
+# dependencies & build
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# local developer secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# generated/heavy artifacts
+outputs/
+previews/
+renders/
+.cache/
+tmp/
+temp/
+*.mp4
+*.mov
+*.wav
+*.flac
+*.psd
+*.actor
+*.actor2d
+!examples/**/*.json
+
+# machine/editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json

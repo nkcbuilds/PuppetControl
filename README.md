@@ -18,9 +18,10 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - Experimental camera events (wide/medium/close-up/punch-in) with frame-exact cut boundaries and FFmpeg zoompan.
 - Reproducible vector-art demo with a shared head/face and independent ArmRaise / ElbowExtend controls for reversible two-joint pointing.
 - Local Rhubarb speech alignment CLI and eased lip-sync viseme curves driving the mouth.
+- Assisted single-PNG character onboarding through Rev2D landmarks, local rig build, review sheets, unapproved-by-default manifest, and starter scene.
 - Agent-readable CLI output, tests and CI.
 
-**Not implemented yet:** one-image → fully automated actor rigging, AI-generated arbitrary new pose rigs, convincing smooth bridges between unrelated meshes (especially crossed arms), automatic transcription/TTS, captions, B-roll and multiple actors. The arm-raise gesture is genuinely animated, but its artwork is still prototype-quality. Other pose families may require edited hard cuts. The pose manifest is capability metadata; visual poses become usable only after their rig files are generated, validated and inspected.
+**Not implemented yet:** fully automatic landmark placement or reliable one-click rigging, AI-generated arbitrary new pose rigs, convincing smooth bridges between unrelated meshes (especially crossed arms), automatic transcription/TTS, captions, B-roll and multiple actors. The arm-raise gesture is genuinely animated, but its artwork is still prototype-quality. Other pose families may require edited hard cuts. The pose manifest is capability metadata; visual poses become usable only after their rig files are generated, validated and inspected.
 
 ## Local quickstart (Node.js 22+, Git, FFmpeg)
 
@@ -38,6 +39,7 @@ npm run demo:1080p      # Fit native art inside a 1920x1080 widescreen MP4
 npm run demo:directed   # Apply edited camera framing and gradual punch-in
 npm run demo:gesture    # Generate two-joint gesture rig and export edited 1080p demo
 npm run demo:gesture-cycle  # Render continuous raise/lower cycles without cuts
+npm run demo:avatar    # Import a freshly rendered flat PNG and create an unapproved rig + review sheets
 ~~~
 
 The sample uses Rev2D's own **Hana** rig from the pinned MIT-licensed upstream checkout; generated character rig JSON is not checked into this repository. The derived example video is separately attributed and licensed under the original Rev2D terms.
@@ -74,6 +76,8 @@ Read [AGENTS.md](AGENTS.md), the project skill at [.agents/skills/puppetcontrol/
 4. Validate with npm run dev -- scene validate ... .
 5. Preview, inspect generated frames, and export.
 
+To start from a new illustration, use `node dist/cli/index.js character import art/portrait.png --out avatars/portrait --id portrait`, annotate landmarks, then run `node dist/cli/index.js character build avatars/portrait`. The generated actor remains unapproved pending visual QA. See [Character import guide](docs/CHARACTER_IMPORT.md).
+
 Our native animation backend for the spike is **Rev2D**, pinned by the setup helper. It is not yet an npm-published dependency and must be installed locally. The project never silently downloads a rig/model while rendering.
 
 ## Development roadmap
@@ -84,9 +88,10 @@ Our native animation backend for the spike is **Rev2D**, pinned by the setup hel
 - [Audio and lip-sync workflow](docs/AUDIO_WORKFLOW.md)
 - [Experimental camera direction](docs/VIDEO_SHOTS.md)
 - [Continuous arm gesture proof](docs/ANIMATED_GESTURE.md)
+- [Assisted single-image import and QA](docs/CHARACTER_IMPORT.md)
 - [Architecture decision log](docs/DECISIONS.md)
 
-Audio/lip-sync works with precomputed Rhubarb cues and a locally installed executable. The smooth pointing demo reuses the same face and deforms one rig continuously; crossed arms still need a more convincing bridge or intentional cut. Next: richer joint animation, rigging quality, image decomposition and AI-assisted pose generation.
+Audio/lip-sync works with precomputed Rhubarb cues and a locally installed executable. The smooth pointing demo reuses the same face and deforms one rig continuously; crossed arms still need a more convincing bridge or intentional cut. Next: automatic landmark assistance with robust quality review, richer joint animation, and on-demand identity-consistent body pose generation.
 
 ## License
 

@@ -64,12 +64,12 @@
 
 ## Task board: M5
 
-- [ ] Choose smallest working decomposition adapter.
-- [ ] Add canonical reference image/pose prompt templates.
+- [x] Choose the pinned Rev2D single-image avatar builder as the first assisted decomposition/rigging adapter, rather than adding a second engine.
+- [ ] Add canonical identity/reference image and new-pose prompt templates. A tested landmark fixture now exists, but AI body pose prompts remain future work.
 - [ ] Align generated pose canvas, rig anchors and attachment transforms.
 - [ ] Save provenance/model/version/seed and QA status per pose.
 - [ ] Generate a new pose once; use same cached asset in second project.
-- [ ] Allow manual rejection, repair or regeneration of just one failed stage.
+- [x] Support manual landmark repair, explicit rebuild, review sheets, and approval gating; generated rigs default to unapproved. Partial stage regeneration remains future work.
 
 ## Acceptance benchmark
 

@@ -39,3 +39,10 @@ The frame-accurate pose timeline now drives different Rev2D models for neutral, 
 **Status:** accepted.
 
 scripts/build-demo-poses.mjs requires pinned Rev2D checkout SHA and emits three vector-art rig variants deterministically. Generated complete rig JSONs are ignored and not committed because they contain substantial upstream Rev2D Hana artwork. A small silent MP4 is bundled as an attributed proof-of-concept preview only. Upstream RevStudio MIT license text and ownership is preserved under docs/THIRD_PARTY_NOTICES.md.
+
+## ADR-009 — Assisted PNG-to-rig via pinned Rev2D avatar tools
+**Status:** experimental and verified for one pinned sample (2026-11-06).
+
+Instead of building a new image decomposition/mesh engine, PuppetControl wraps the existing Rev2D avatar new / validate / build / poses workflow. Agent- or human-authored landmarks remain required. The source image stays local; the generated model shares the same scene renderer as authored rigs. Validation and build success alone cannot approve an actor: character manifests start with approved=false until review sheets are inspected. The checked-in Hana landmark fixture and demo reproduce the integration without bundling full rig artwork. A working imported animation was rendered from an isolated local test approval copy, while the normal generated actor remained unapproved due to observed eyelid artifacts.
+
+An assisted avatar controls a head, eyes and mouth; it does not automatically add neutral-to-pointing body anatomy or new identity-consistent pose families.

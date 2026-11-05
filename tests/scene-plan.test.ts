@@ -67,9 +67,16 @@ describe("performance compiler (one rig)", () => {
       .toThrowError(PreviewUnsupportedError);
   });
 
-  it("rejects camera composition and audio until those exist", () => {
-    expect(() => compilePerformance(build([
+  it("leaves camera-only events to the video compositor", () => {
+    const performance = compilePerformance(build([
       { atMs: 300, kind: "camera", name: "punch-in", amount: 0.1 },
+    ]), actor, "hana", defaultRig);
+    expect(performance.tracks).toEqual([]);
+  });
+
+  it("still rejects unimplemented caption rendering", () => {
+    expect(() => compilePerformance(build([
+      { atMs: 300, kind: "caption", text: "Hello", durationMs: 300 },
     ]), actor, "hana", defaultRig)).toThrowError(PreviewUnsupportedError);
   });
 

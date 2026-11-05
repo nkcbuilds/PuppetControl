@@ -34,6 +34,8 @@ export const characterSchema = z.strictObject({
     backend: z.literal("rev2d"),
     modelPath: z.string().trim().min(1),
     expressionPresets: z.record(z.string(), z.record(z.string(), z.number())),
+    /** Controls for multiple poses represented by one deformable rig. */
+    posePresets: z.record(z.string(), z.record(z.string(), z.number())).optional(),
   }).optional(),
   id: identifier,
   defaultPose: identifier,

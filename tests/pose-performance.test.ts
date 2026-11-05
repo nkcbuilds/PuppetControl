@@ -1,0 +1,156 @@
+import { describe, expect, it } from "vitest";
+import { resolve } from "node:path";
+import { loadAndValidateScene } from "../src/scene/load.js";
+import { sceneSchema } from "../src/scene/schemas.js";
+import { planPoseTimeline } from "../src/animation/pose-timeline.js";
+import { compilePerformance } from "../src/render/scene-plan.js";
+
+const fixture = resolve("examples/scenes/hana-gesture-1080p.json");
+const sharedParameters = new Map([
+  ["ArmRaise", 0],
+  ["ElbowExtend", 0],
+  ["MouthForm", 0],
+  ["Cheek", 0],
+  ["BrowLY", 0],
+  ["BrowRY", 0],
+  ["AngleX", 0],
+  ["AngleY", 0],
+  ["EyeBallX", 0],
+  ["EyeBallY", 0],
+]);
+const crossedParameters = new Map([...sharedParameters].filter(([name]) => name !== "ArmRaise" && name !== "ElbowExtend"));
+
+describe("continuous same-rig pose performance", () => {
+  it("plans a sampled geometric interpolation instead of an edited cut", async () => {
+    const result = await loadAndValidateScene(fixture);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    const actor = result.characters.get("hana")!;
+    const plan = planPoseTimeline(result.scene, actor, "hana");
+    expect(plan.segments.map((segment) => [
+      segment.kind,
+      segment.kind === "pose" ? segment.pose : segment.mode,
+      segment.startFrame,
+      segment.endFrame,
+    ])).toEqual([
+      ["pose", "neutral", 0, 60],
+      ["transition", "interpolate", 60, 69],
+      ["pose", "pointing", 69, 126],
+      ["pose", "arms-crossed", 126, 195],
+    ]);
+    const transition = plan.transitions.find((item) => item.decision.to === "pointing");
+    expect(transition?.decision.mode).toBe("interpolate");
+    expect(transition?.decision.durationMs).toBe(300);
+  });
+
+  it("adds parameter curves to move an arm through intermediate geometry", async () => {
+    const result = await loadAndValidateScene(fixture);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    const actor = result.characters.get("hana")!;
+    const performance = compilePerformance(result.scene, actor, "hana", sharedParameters, undefined, {
+      allowExternalPoseFamilies: true,
+      currentModelPath: "rigs/gesture.r2d.json",
+    });
+    const arm = performance.tracks.find((track) => track.target === "param:ArmRaise");
+    expect(arm?.keys).toEqual([
+      { t: 0, v: 0, ease: "inOutSine" },
+      { t: 0.3, v: 0 },
+      { t: 2, v: 0, ease: "inOutSine" },
+      { t: 2.3, v: 1 },
+      { t: 6.5, v: 1 },
+    ]);
+    const elbow = performance.tracks.find((track) => track.target === "param:ElbowExtend");
+    expect(elbow?.keys).toEqual(arm?.keys);
+  });
+
+  it("does not apply gesture-only ArmRaise controls to the crossed-arms rig", async () => {
+    const result = await loadAndValidateScene(fixture);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    const actor = result.characters.get("hana")!;
+    const performance = compilePerformance(result.scene, actor, "hana", crossedParameters, undefined, {
+      allowExternalPoseFamilies: true,
+      currentModelPath: "rigs/arms-crossed.r2d.json",
+    });
+    expect(performance.tracks.some((track) => track.target === "param:ArmRaise")).toBe(false);
+    expect(performance.tracks.some((track) => track.target === "param:ElbowExtend")).toBe(false);
+  });
+
+  it("reverses the shoulder and elbow without cuts in one shared rig", async () => {
+    const result = await loadAndValidateScene(resolve("examples/scenes/hana-gesture-cycle.json"));
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+
+    const actor = result.characters.get("hana")!;
+    const plan = planPoseTimeline(result.scene, actor, "hana");
+    expect(plan.frameCount).toBe(150);
+    expect(plan.transitions.filter((item) => item.decision.mode === "interpolate")).toHaveLength(5);
+    expect(plan.transitions.filter((item) => item.decision.mode === "cut")).toHaveLength(0);
+
+    const performance = compilePerformance(result.scene, actor, "hana", sharedParameters, undefined, {
+      allowExternalPoseFamilies: true,
+      currentModelPath: "rigs/gesture.r2d.json",
+    });
+    const targetTimes = [1.1, 2.2, 3.2, 4.5];
+    for (const control of ["ArmRaise", "ElbowExtend"]) {
+      const track = performance.tracks.find((item) => item.target === "param:" + control);
+      expect(track?.keys.filter((key) => targetTimes.includes(key.t)).map((key) => key.v))
+        .toEqual([1, 0, 1, 0]);
+    }
+  });
+
+  it("initializes a non-neutral default pose even with no pose events", async () => {
+    const loaded = await loadAndValidateScene(fixture);
+    expect(loaded.valid).toBe(true);
+    if (!loaded.valid) return;
+    const actor = structuredClone(loaded.characters.get("hana")!);
+    actor.defaultPose = "pointing";
+    const scene = sceneSchema.parse({ ...loaded.scene, events: [] });
+    const performance = compilePerformance(scene, actor, "hana", sharedParameters, undefined, {
+      allowExternalPoseFamilies: true,
+      currentModelPath: "rigs/gesture.r2d.json",
+    });
+    for (const control of ["ArmRaise", "ElbowExtend"]) {
+      const track = performance.tracks.find((item) => item.target === "param:" + control);
+      expect(track?.keys).toEqual([{ t: 0, v: 1 }, { t: 6.5, v: 1 }]);
+    }
+  });
+
+  it("restores rig defaults when the neutral preset omits a pointing control", async () => {
+    const loaded = await loadAndValidateScene(fixture);
+    expect(loaded.valid).toBe(true);
+    if (!loaded.valid) return;
+    const actor = structuredClone(loaded.characters.get("hana")!);
+    actor.render!.posePresets!.neutral = {};
+    const scene = sceneSchema.parse({
+      ...loaded.scene,
+      events: [
+        { atMs: 0, kind: "pose", actor: "hana", name: "neutral" },
+        { atMs: 1000, kind: "pose", actor: "hana", name: "pointing", transition: "interpolate" },
+        { atMs: 2500, kind: "pose", actor: "hana", name: "neutral", transition: "interpolate" },
+      ],
+    });
+    const performance = compilePerformance(scene, actor, "hana", sharedParameters, undefined, {
+      allowExternalPoseFamilies: true,
+      currentModelPath: "rigs/gesture.r2d.json",
+    });
+    for (const control of ["ArmRaise", "ElbowExtend"]) {
+      const track = performance.tracks.find((item) => item.target === "param:" + control);
+      expect(track?.keys.some((key) => key.t === 1.3 && key.v === 1)).toBe(true);
+      expect(track?.keys.some((key) => key.t === 2.8 && key.v === 0)).toBe(true);
+    }
+  });
+
+  it("fails if a relevant pose preset targets nonexistent geometry controls", async () => {
+    const result = await loadAndValidateScene(fixture);
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+    const actor = structuredClone(result.characters.get("hana")!);
+    actor.render!.posePresets!.pointing["MissingArmControl"] = 1;
+    expect(() => compilePerformance(result.scene, actor, "hana", sharedParameters, undefined, {
+      allowExternalPoseFamilies: true,
+      currentModelPath: "rigs/gesture.r2d.json",
+    })).toThrow(/Pose control not in rig/);
+  });
+});

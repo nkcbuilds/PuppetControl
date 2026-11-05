@@ -81,6 +81,7 @@ export function compilePerformance(
   actorId: string,
   rigDefaults: ReadonlyMap<string, number>,
   speech?: { cues: readonly RhubarbMouthCue[]; startMs: number },
+  options: { allowExternalPoseFamilies?: boolean; currentModelPath?: string } = {},
 ): PerformanceAnimation {
   if (!character.render || character.render.backend !== "rev2d") {
     throw new PreviewUnsupportedError("RIG_REQUIRED", "Character has no configured Rev2D rig.");
@@ -93,24 +94,89 @@ export function compilePerformance(
   }
   const tracks = new Map<string, AnimationKey[]>();
   const durationSeconds = scene.durationMs / 1000;
+  const render = character.render;
+  const posePresets = render.posePresets ?? {};
+  const currentModelPath = options.currentModelPath ?? render.modelPath;
+  const defaultFamily = character.poseFamilies.find((pose) => pose.name === character.defaultPose);
+  const defaultModelPath = defaultFamily?.modelPath ?? render.modelPath;
+  const usedPoseNames = new Set<string>([
+    character.defaultPose,
+    ...scene.events.filter((event) => event.kind === "pose" && event.actor === actorId)
+      .map((event) => (event as Extract<SceneEvent, { kind: "pose" }>).name),
+  ]);
+  // Presets are partial: a missing control means the rig's *absolute default*.
+  // Collect control keys from only the pose families used by this scene and rig.
+  const poseControls = new Set<string>();
+  for (const family of character.poseFamilies) {
+    if (!usedPoseNames.has(family.name) || (family.modelPath ?? render.modelPath) !== currentModelPath) {
+      continue;
+    }
+    for (const parameter of Object.keys(posePresets[family.name] ?? {})) poseControls.add(parameter);
+  }
+  for (const parameter of poseControls) {
+    if (!rigDefaults.has(parameter)) {
+      throw new PreviewUnsupportedError("RIG_PARAMETER_MISSING", "Pose control not in rig: " + parameter);
+    }
+  }
+  // The default pose is a *state*, not an event that a scene must repeat.
+  if (defaultModelPath === currentModelPath) {
+    const baseline = posePresets[character.defaultPose] ?? {};
+    for (const parameter of poseControls) {
+      tracks.set(parameter, [{ t: 0, v: baseline[parameter] ?? rigDefaults.get(parameter)! }]);
+    }
+  }
 
   const events = scene.events.map((event, index) => ({ event, index }))
     .sort((a, b) => a.event.atMs - b.event.atMs || a.index - b.index);
 
   for (const { event } of events) {
     if (event.kind === "pose") {
-      if (event.name !== character.defaultPose) {
+      const family = character.poseFamilies.find((pose) => pose.name === event.name);
+      const familyModel = family?.modelPath ?? render.modelPath;
+      if (familyModel !== currentModelPath) {
+        if (options.allowExternalPoseFamilies) continue;
         throw new PreviewUnsupportedError(
           "POSE_RENDER_NOT_IMPLEMENTED",
-          "Pose '" + event.name + "' requires a validated rig/transition renderer; not supported in the first preview.",
+          "Pose '" + event.name + "' requires a separate rig model.",
+        );
+      }
+      const mapping = posePresets[event.name];
+      // A cross-rig family can use its authored default artwork without a preset.
+      // A different pose on the default rig cannot silently render unchanged.
+      if (!mapping && event.name !== character.defaultPose && familyModel === defaultModelPath) {
+        throw new PreviewUnsupportedError(
+          "POSE_PRESET_MISSING",
+          "The shared rig has no controls for pose '" + event.name + "'.",
+        );
+      }
+      if (poseControls.size > 0) {
+        const start = event.atMs / 1000;
+        // Same-rig transitions are 300ms in the validated pose resolver.
+        const duration = event.transition === "cut" ? 0 : 300;
+        const end = Math.min(durationSeconds, (event.atMs + duration) / 1000);
+        for (const parameter of poseControls) {
+          // A partial preset is a complete state: unset parameters reset to the
+          // rig's default rather than retaining the previous pose's value.
+          const goal = mapping?.[parameter] ?? rigDefaults.get(parameter)!;
+          insertEase(tracks, parameter, start, end, goal, rigDefaults.get(parameter));
+        }
+      } else if (!mapping && !options.allowExternalPoseFamilies &&
+        event.name !== character.defaultPose) {
+        throw new PreviewUnsupportedError(
+          "POSE_RENDER_NOT_IMPLEMENTED",
+          "Pose '" + event.name + "' has no renderable controls in this rig.",
         );
       }
       continue;
     }
-    if (event.kind === "camera" || event.kind === "caption") {
+    if (event.kind === "camera") {
+      // Camera is composed by the video exporter, not by the character rig.
+      continue;
+    }
+    if (event.kind === "caption") {
       throw new PreviewUnsupportedError(
         "COMPOSITION_NOT_IMPLEMENTED",
-        "Camera/caption events require the video compositor milestone.",
+        "Caption rendering is not implemented yet.",
       );
     }
     if (event.actor !== actorId) continue;

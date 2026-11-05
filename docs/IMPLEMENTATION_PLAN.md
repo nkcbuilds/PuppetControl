@@ -58,7 +58,7 @@
 - [x] Generate neutral, pointing and arms-crossed demo rigs from pinned Rev2D Hana artwork (simple vector poses; not yet AI-generated).
 - [x] Verify shared head/face artwork and controls across the three derived variants (head-only output identical under same parameters).
 - [x] Visually inspect same-scale/palette pose PNGs and sample boundary frames; currently rough arm vector design, appropriate only for a functional proof.
-- [ ] Author and render genuinely moving bridge transitions. Two deliberate pose cuts now have optional rendered camera reframing, but arm geometry still jumps.
+- [x] Prototype one genuinely moving rig transition: neutral→pointing uses a continuous ArmRaise bone rotation over 300ms and was visually inspected at 30fps. Cross-rig pointing→crossed-arms remains an edited hard cut; authored bridge clips still unimplemented.
 - [x] Export 8.533-second voiced three-pose MP4, inspect speaking/boundary frames; facial timing continues across hard cuts.
 - [x] Test invalid topology does not trigger naive morph/crossfade; renderer rejects nonzero interpolation/bridge segments pending real implementation.
 

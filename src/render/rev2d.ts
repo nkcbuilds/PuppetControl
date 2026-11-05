@@ -8,6 +8,7 @@ import { compilePerformance, PreviewUnsupportedError } from "./scene-plan.js";
 import { parseRhubarbMouthCuesJson } from "../audio/rhubarb.js";
 import { buildFfmpegArgs, type FfmpegAudioInput } from "../audio/ffmpeg.js";
 import type { VideoOutput } from "../video/output.js";
+import type { SceneEvent } from "../scene/schemas.js";
 import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.js";
 
 const execFileAsync = promisify(execFile);
@@ -36,6 +37,7 @@ export interface FrameResult {
   poseFamilies: string[];
   audio?: FfmpegAudioInput;
   presentation?: VideoOutput;
+  camera?: { events: SceneEvent[]; sourceWidth: number; sourceHeight: number };
 }
 
 function insideRoot(path: string, root = process.cwd()): string {
@@ -153,7 +155,7 @@ async function renderRigSegment(input: {
   const performanceScene: Scene = {
     ...scene,
     events: scene.events.filter((event) =>
-      event.kind !== "pose" && !(event.kind === "camera" && event.name === "cut"),
+      event.kind !== "pose" && event.kind !== "camera",
     ),
   };
   const defaults = new Map(model.parameters.map((item) => [item.id, item.default ?? 0]));
@@ -311,6 +313,11 @@ export async function renderRev2DFrames(
     poseFamilies: familyNames,
     ...(audio ? { audio } : {}),
     ...(scene.output ? { presentation: scene.output } : {}),
+    camera: {
+      events: scene.events.filter((event) => event.kind === "camera"),
+      sourceWidth: scene.resolution.width,
+      sourceHeight: scene.resolution.height,
+    },
   };
 }
 
@@ -327,6 +334,7 @@ export async function encodeFrames(
     frameCount: frames.count,
     ...(frames.audio ? { audio: frames.audio } : {}),
     ...(frames.presentation ? { output: frames.presentation } : {}),
+    ...(frames.camera ? { camera: frames.camera } : {}),
   });
   await execute("ffmpeg", args, process.cwd(), 240_000);
   return outputFile;

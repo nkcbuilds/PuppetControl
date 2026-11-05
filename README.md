@@ -15,6 +15,7 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - Working local sample with blinking/idle/breathing from Rev2D.
 - Real PNG frame sequence and H.264 MP4 export, with optional single-track AAC voiceover.
 - Optional aspect-safe 1920×1080 presentation output independent of native rig canvas size.
+- Experimental camera events (wide/medium/close-up/punch-in) with frame-exact cut boundaries and FFmpeg zoompan.
 - Reproducible vector-art demo with three distinct pose rigs using identical head/face artwork.
 - Local Rhubarb speech alignment CLI and eased lip-sync viseme curves driving the mouth.
 - Agent-readable CLI output, tests and CI.
@@ -34,11 +35,14 @@ npm run demo:render
 npm run demo:poses       # Generate three demo rigs from the pinned Hana source
 npm run demo:multipose   # Export an experimental 3-pose video with hard cuts
 npm run demo:1080p      # Fit native art inside a 1920x1080 widescreen MP4
+npm run demo:directed   # Apply edited camera framing and gradual punch-in
 ~~~
 
 The sample uses Rev2D's own **Hana** rig from the pinned MIT-licensed upstream checkout; generated character rig JSON is not checked into this repository. The derived example video is separately attributed and licensed under the original Rev2D terms.
 
 [Watch the experimental multi-pose demo](docs/media/hana-multipose-demo.mp4) (silent, 512×640, hard-cut prototype).
+
+[Watch the 1080p camera-directed demo](docs/media/hana-directed-1080p.mp4) (silent, same rig art, deliberate shot reframes; still not a smooth body transition).
 
 Run a custom scene through the CLI:
 
@@ -72,9 +76,10 @@ Our native animation backend for the spike is **Rev2D**, pinned by the setup hel
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [Rig backend and known limitations](docs/RIG_BACKEND_EVALUATION.md)
 - [Audio and lip-sync workflow](docs/AUDIO_WORKFLOW.md)
+- [Experimental camera direction](docs/VIDEO_SHOTS.md)
 - [Architecture decision log](docs/DECISIONS.md)
 
-Audio/lip-sync works with precomputed Rhubarb cues and a locally installed executable. The three-pose demo reuses an identical face across different rig files. Next is genuinely smooth transitions and shot composition, then optional image decomposition and AI-assisted pose generation.
+Audio/lip-sync works with precomputed Rhubarb cues and a locally installed executable. The three-pose demo reuses an identical face across different rig files. Camera shot framing is now rendered, but physical arm bridges remain the key missing quality feature. After that: image decomposition and AI-assisted pose generation.
 
 ## License
 

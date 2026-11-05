@@ -1,4 +1,6 @@
 import { buildFitVideoFilter, type VideoOutput } from "../video/output.js";
+import { buildCameraPreviewFilter } from "../video/camera-preview.js";
+import type { SceneEvent } from "../scene/schemas.js";
 
 export interface FfmpegAudioInput {
   path: string;
@@ -13,6 +15,11 @@ export interface FfmpegArgvOptions {
   frameCount: number;
   audio?: FfmpegAudioInput;
   output?: VideoOutput;
+  camera?: {
+    events: readonly SceneEvent[];
+    sourceWidth: number;
+    sourceHeight: number;
+  };
 }
 
 function requirePath(name: string, value: string): void {
@@ -82,9 +89,14 @@ export function buildFfmpegArgs(options: FfmpegArgvOptions): string[] {
     args.push("-map", "0:v:0");
   }
 
-  if (options.output) {
-    args.push("-vf", buildFitVideoFilter(options.output));
-  }
+  const stages = [
+    options.camera ? buildCameraPreviewFilter(options.camera.events, options.fps, {
+      width: options.camera.sourceWidth,
+      height: options.camera.sourceHeight,
+    }) : null,
+    options.output ? buildFitVideoFilter(options.output) : null,
+  ].filter((stage): stage is string => !!stage);
+  if (stages.length) args.push("-vf", stages.join(","));
 
   args.push(
     "-frames:v", String(options.frameCount),

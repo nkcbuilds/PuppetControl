@@ -38,7 +38,7 @@ async function run(): Promise<void> {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
       "Available: doctor, character inspect, audio align, scene validate/plan, single-rig scene preview/render.\n" +
-      "Not yet available: animated pose bridges, shot framing, captions, automatic transcription/TTS, character compile.\n",
+      "Not yet available: animated pose bridges, captions, automatic transcription/TTS, character compile.\n",
     );
     return;
   }
@@ -59,8 +59,8 @@ async function run(): Promise<void> {
       node: process.version,
       ffmpegAvailable: ffmpegFound,
       rev2dAvailable,
-      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render"] : [])],
-      unavailableFeatures: ["animated-pose-bridges", "camera-framing", "character-compile", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
+      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
+      unavailableFeatures: ["animated-pose-bridges", "character-compile", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
     return;
   }
@@ -161,7 +161,7 @@ async function run(): Promise<void> {
       third,
     );
     if (second === "preview") {
-      print({ valid: true, kind: "frame-preview", ...frameResult, limitations: ["Preview produces frames only; pose-family changes are hard cuts with no shot framing, captions or smooth bridges yet."] });
+      print({ valid: true, kind: "frame-preview", ...frameResult, limitations: ["Preview PNG frames are pre-camera; shot framing is applied on MP4 export. Pose cuts remain hard cuts and no animated bridges exist yet."] });
       return;
     }
     const args = process.argv.slice(5);
@@ -170,7 +170,7 @@ async function run(): Promise<void> {
     if (args.length > 0 && (outputIndex !== 0 || args.length !== 2)) usage();
     const outputFile = args[outputIndex + 1] ?? resolve("outputs", result.scene.id + ".mp4");
     const mp4 = await encodeFrames(frameResult, outputFile);
-    print({ valid: true, kind: frameResult.audio ? "voiced-mp4" : "silent-mp4", output: mp4, ...frameResult, limitations: ["No shot framing, captions, smooth between-pose bridges or automatic Rhubarb invocation yet."] });
+    print({ valid: true, kind: frameResult.audio ? "voiced-mp4" : "silent-mp4", output: mp4, ...frameResult, limitations: ["Shot framing is experimental; no captions, smooth between-pose bridges or automatic Rhubarb invocation yet."] });
     return;
   }
   usage();

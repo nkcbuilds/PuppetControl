@@ -103,6 +103,7 @@ export const sceneEventSchema = z.discriminatedUnion("kind", [
     kind: z.literal("camera"),
     name: z.enum(["wide", "medium", "close-up", "punch-in", "cut"]),
     amount: z.number().min(0).max(1).optional(),
+    durationMs: z.number().int().min(0).max(2000).optional(),
   }),
   z.strictObject({
     ...time,

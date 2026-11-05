@@ -16,7 +16,7 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - Real PNG frame sequence and H.264 MP4 export, with optional single-track AAC voiceover.
 - Optional aspect-safe 1920×1080 presentation output independent of native rig canvas size.
 - Experimental camera events (wide/medium/close-up/punch-in) with frame-exact cut boundaries and FFmpeg zoompan.
-- Reproducible vector-art demo with shared head/face artwork and an ArmRaise rig control for smooth pointing.
+- Reproducible vector-art demo with a shared head/face and independent ArmRaise / ElbowExtend controls for reversible two-joint pointing.
 - Local Rhubarb speech alignment CLI and eased lip-sync viseme curves driving the mouth.
 - Agent-readable CLI output, tests and CI.
 
@@ -36,7 +36,8 @@ npm run demo:poses       # Generate three demo rigs from the pinned Hana source
 npm run demo:multipose   # Export an experimental 3-pose video with hard cuts
 npm run demo:1080p      # Fit native art inside a 1920x1080 widescreen MP4
 npm run demo:directed   # Apply edited camera framing and gradual punch-in
-npm run demo:gesture    # Generate arm-raise rig and export the real smooth gesture demo
+npm run demo:gesture    # Generate two-joint gesture rig and export edited 1080p demo
+npm run demo:gesture-cycle  # Render continuous raise/lower cycles without cuts
 ~~~
 
 The sample uses Rev2D's own **Hana** rig from the pinned MIT-licensed upstream checkout; generated character rig JSON is not checked into this repository. The derived example video is separately attributed and licensed under the original Rev2D terms.
@@ -45,7 +46,9 @@ The sample uses Rev2D's own **Hana** rig from the pinned MIT-licensed upstream c
 
 [Watch the 1080p camera-directed demo](docs/media/hana-directed-1080p.mp4) (silent, deliberate camera reframes; unrelated body artwork still changes at cuts).
 
-[Watch the 1080p arm-raise demo](docs/media/hana-gesture-1080p.mp4) (silent, 30 fps; pointing uses continuous single-rig rotation over 300ms; crossed arms still use a camera cut).
+[Watch the 1080p arm-raise demo](docs/media/hana-gesture-1080p.mp4) (silent, 30 fps; pointing uses continuous shared-rig motion over 300ms; crossed arms still use a camera cut).
+
+[Watch the reversible gesture demo](docs/media/hana-gesture-cycle.mp4) (5 seconds, silent 30 fps; the same arm moves between neutral and pointing four times with no cuts).
 
 Run a custom scene through the CLI:
 

@@ -7,6 +7,7 @@ import { compilePerformance } from "../src/render/scene-plan.js";
 const fixture = resolve("examples/scenes/hana-gesture-1080p.json");
 const sharedParameters = new Map([
   ["ArmRaise", 0],
+  ["ElbowExtend", 0],
   ["MouthForm", 0],
   ["Cheek", 0],
   ["BrowLY", 0],
@@ -16,7 +17,7 @@ const sharedParameters = new Map([
   ["EyeBallX", 0],
   ["EyeBallY", 0],
 ]);
-const crossedParameters = new Map([...sharedParameters].filter(([name]) => name !== "ArmRaise"));
+const crossedParameters = new Map([...sharedParameters].filter(([name]) => name !== "ArmRaise" && name !== "ElbowExtend"));
 
 describe("continuous same-rig pose performance", () => {
   it("plans a sampled geometric interpolation instead of an edited cut", async () => {
@@ -58,6 +59,8 @@ describe("continuous same-rig pose performance", () => {
       { t: 2.3, v: 1 },
       { t: 6.5, v: 1 },
     ]);
+    const elbow = performance.tracks.find((track) => track.target === "param:ElbowExtend");
+    expect(elbow?.keys).toEqual(arm?.keys);
   });
 
   it("does not apply gesture-only ArmRaise controls to the crossed-arms rig", async () => {
@@ -70,6 +73,30 @@ describe("continuous same-rig pose performance", () => {
       currentModelPath: "rigs/arms-crossed.r2d.json",
     });
     expect(performance.tracks.some((track) => track.target === "param:ArmRaise")).toBe(false);
+    expect(performance.tracks.some((track) => track.target === "param:ElbowExtend")).toBe(false);
+  });
+
+  it("reverses the shoulder and elbow without cuts in one shared rig", async () => {
+    const result = await loadAndValidateScene(resolve("examples/scenes/hana-gesture-cycle.json"));
+    expect(result.valid).toBe(true);
+    if (!result.valid) return;
+
+    const actor = result.characters.get("hana")!;
+    const plan = planPoseTimeline(result.scene, actor, "hana");
+    expect(plan.frameCount).toBe(150);
+    expect(plan.transitions.filter((item) => item.decision.mode === "interpolate")).toHaveLength(5);
+    expect(plan.transitions.filter((item) => item.decision.mode === "cut")).toHaveLength(0);
+
+    const performance = compilePerformance(result.scene, actor, "hana", sharedParameters, undefined, {
+      allowExternalPoseFamilies: true,
+      currentModelPath: "rigs/gesture.r2d.json",
+    });
+    const targetTimes = [1.1, 2.2, 3.2, 4.5];
+    for (const control of ["ArmRaise", "ElbowExtend"]) {
+      const track = performance.tracks.find((item) => item.target === "param:" + control);
+      expect(track?.keys.filter((key) => targetTimes.includes(key.t)).map((key) => key.v))
+        .toEqual([1, 0, 1, 0]);
+    }
   });
 
   it("fails if a relevant pose preset targets nonexistent geometry controls", async () => {

@@ -70,10 +70,12 @@
     },
     "posePresets": {
       "neutral": {
-        "ArmRaise": 0
+        "ArmRaise": 0,
+        "ElbowExtend": 0
       },
       "pointing": {
-        "ArmRaise": 1
+        "ArmRaise": 1,
+        "ElbowExtend": 1
       }
     }
   }

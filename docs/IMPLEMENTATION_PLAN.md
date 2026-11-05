@@ -37,13 +37,13 @@
 
 ## Task board: M2
 
-- [ ] Versioned character capability schema.
-- [ ] Versioned scene timeline schema.
-- [ ] Transition classification (same-rig, bridge, hidden cut, unsupported).
+- [x] Versioned character capability schema.
+- [x] Versioned scene timeline schema.
+- [x] Transition classification (same-rig, bridge, hidden cut, unsupported) and frame-accurate pose segments; actual bridge/cut rendering remains M4.
 - [ ] Timeline interpolation/evaluation.
-- [ ] CLI command for doctor, inspect, validate and preview.
-- [ ] Reject unsupported parameters and generated content not yet QA-approved.
-- [ ] Unit tests for every validator/error path.
+- [x] CLI command for doctor, inspect, validate, plan and single-rig preview.
+- [x] Reject unsupported parameters and pose families marked unapproved in scene planning/validation.
+- [x] Unit tests for schema, pose transition boundaries, invalid actors and unsupported motion cases (additional visual integration tests follow).
 
 ## Task board: M3
 

@@ -10,6 +10,7 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 
 - Versioned JSON scene and character schemas with strict validation.
 - Explicit transition policy: compatible interpolation, authored bridge, deliberate cut, or failure.
+- Frame-accurate multi-pose timeline planner (previewable JSON plan; distinct rigs do not render yet).
 - Parameterized head/gaze/expression timelines compiled to a Rev2D animation.
 - Working local sample with blinking/idle/breathing from Rev2D.
 - Real PNG frame sequence and H.264 MP4 export, with optional single-track AAC voiceover.
@@ -36,6 +37,7 @@ Run a custom scene through the CLI:
 
 ~~~sh
 node dist/cli/index.js scene validate examples/scenes/hana-preview.json
+node dist/cli/index.js scene plan examples/scenes/intro.json
 node dist/cli/index.js scene render examples/scenes/hana-preview.json --out outputs/hana-custom.mp4
 ~~~
 

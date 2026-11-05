@@ -9,6 +9,7 @@ import { loadAndValidateScene } from "../scene/load.js";
 import { encodeFrames, renderRev2DFrames } from "../render/rev2d.js";
 import { PreviewUnsupportedError } from "../render/scene-plan.js";
 import { alignAudioWithRhubarb } from "../audio/align.js";
+import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -22,6 +23,7 @@ function usage(): never {
     "  puppetctl character inspect <character.json>\n" +
     "  puppetctl audio align <voice.wav> --out <mouth.json> [--binary rhubarb] [--force]\n" +
     "  puppetctl scene validate <scene.json>\n" +
+    "  puppetctl scene plan <scene.json>\n" +
     "  puppetctl scene preview <scene.json>\n" +
     "  puppetctl scene render <scene.json> [--out output.mp4]\n" +
     "  puppetctl --help\n" +
@@ -35,7 +37,7 @@ async function run(): Promise<void> {
   if (first === "--help" || first === "help") {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
-      "Available: doctor, character inspect, audio align, scene validate, single-rig scene preview/render.\n" +
+      "Available: doctor, character inspect, audio align, scene validate/plan, single-rig scene preview/render.\n" +
       "Not yet available: multi-pose rendering, captions, automatic transcription/TTS, character compile.\n",
     );
     return;
@@ -122,6 +124,21 @@ async function run(): Promise<void> {
     return;
   }
 
+  if (first === "scene" && second === "plan" && third) {
+    const result = await loadAndValidateScene(third);
+    if (!result.valid) {
+      print({ valid: false, diagnostics: result.diagnostics });
+      process.exitCode = 1;
+      return;
+    }
+    const plans = result.scene.actors.map((actor) => ({
+      actor: actor.id,
+      plan: planPoseTimeline(result.scene, result.characters.get(actor.id), actor.id),
+    }));
+    print({ valid: true, scene: result.scene.id, plans });
+    return;
+  }
+
   if (first === "scene" && (second === "preview" || second === "render") && third) {
     const result = await loadAndValidateScene(third);
     if (!result.valid) {
@@ -162,7 +179,7 @@ async function run(): Promise<void> {
 run().catch((error: unknown) => {
   print({
     valid: false,
-    code: error instanceof PreviewUnsupportedError ? error.code : "CLI_UNEXPECTED_ERROR",
+    code: error instanceof PreviewUnsupportedError || error instanceof PoseTimelineError ? error.code : "CLI_UNEXPECTED_ERROR",
     message: error instanceof Error ? error.message : String(error),
   });
   process.exitCode = 1;

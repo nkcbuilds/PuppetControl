@@ -1,3 +1,5 @@
+import { buildFitVideoFilter, type VideoOutput } from "../video/output.js";
+
 export interface FfmpegAudioInput {
   path: string;
   /** Delay audio from the start of the video. */
@@ -10,6 +12,7 @@ export interface FfmpegArgvOptions {
   fps: number;
   frameCount: number;
   audio?: FfmpegAudioInput;
+  output?: VideoOutput;
 }
 
 function requirePath(name: string, value: string): void {
@@ -77,6 +80,10 @@ export function buildFfmpegArgs(options: FfmpegArgvOptions): string[] {
     );
   } else {
     args.push("-map", "0:v:0");
+  }
+
+  if (options.output) {
+    args.push("-vf", buildFitVideoFilter(options.output));
   }
 
   args.push(

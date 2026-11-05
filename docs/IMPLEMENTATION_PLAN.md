@@ -32,7 +32,7 @@
 - [x] Generate a 4-second 15-fps scene from the PuppetControl CLI with continuous head/gaze/expression and Rev2D idle/blink/breathing. Mouth speech remains M3.
 - [x] Render PNG frames and silent 4-second MP4 in ignored local outputs; FFprobe verified 60 frames, 15 fps, 512x640.
 - [x] Inspect multiple actual PNGs, including neutral, mouth-open, and changing head/eye pose. Initial visible result acceptable for a rig spike.
-- [ ] Benchmark per-frame cost; capture CPU/GPU/version details.
+- [ ] Benchmark per-frame cost; capture CPU/GPU/version details. Widescreen H.264 export at 1920×1080 has been locally verified from the 512×640 rig without aspect distortion.
 - [x] Record conditional GO in docs/DECISIONS.md; do not mistake a single-character spike for multi-pose quality.
 
 ## Task board: M2

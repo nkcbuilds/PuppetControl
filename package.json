@@ -19,6 +19,7 @@
     "demo:render": "tsx src/cli/index.ts scene render examples/scenes/hana-preview.json",
     "demo:poses": "node scripts/build-demo-poses.mjs",
     "demo:multipose": "tsx src/cli/index.ts scene render examples/scenes/hana-multipose.json",
+    "demo:1080p": "tsx src/cli/index.ts scene render examples/scenes/hana-multipose-1080p.json",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build": "tsc",

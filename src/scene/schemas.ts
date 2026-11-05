@@ -121,6 +121,12 @@ export const sceneSchema = z.strictObject({
     width: z.number().int().min(160).max(7680),
     height: z.number().int().min(160).max(7680),
   }),
+  /** Presentation size; the rig still renders at its own native resolution. */
+  output: z.strictObject({
+    width: z.number().int().min(160).max(7680).refine((v) => v % 2 === 0, "Video width must be even"),
+    height: z.number().int().min(160).max(7680).refine((v) => v % 2 === 0, "Video height must be even"),
+    background: z.string().regex(/^#[0-9A-Fa-f]{6}$/).default("#f0eaf4"),
+  }).optional(),
   actors: z.array(z.strictObject({
     id: identifier,
     characterPath: z.string().trim().min(1),

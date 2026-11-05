@@ -14,6 +14,7 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - Parameterized head/gaze/expression timelines compiled to a Rev2D animation.
 - Working local sample with blinking/idle/breathing from Rev2D.
 - Real PNG frame sequence and H.264 MP4 export, with optional single-track AAC voiceover.
+- Optional aspect-safe 1920×1080 presentation output independent of native rig canvas size.
 - Reproducible vector-art demo with three distinct pose rigs using identical head/face artwork.
 - Local Rhubarb speech alignment CLI and eased lip-sync viseme curves driving the mouth.
 - Agent-readable CLI output, tests and CI.
@@ -32,6 +33,7 @@ npm run demo:preview
 npm run demo:render
 npm run demo:poses       # Generate three demo rigs from the pinned Hana source
 npm run demo:multipose   # Export an experimental 3-pose video with hard cuts
+npm run demo:1080p      # Fit native art inside a 1920x1080 widescreen MP4
 ~~~
 
 The sample uses Rev2D's own **Hana** rig from the pinned MIT-licensed upstream checkout; generated character rig JSON is not checked into this repository. The derived example video is separately attributed and licensed under the original Rev2D terms.
@@ -46,11 +48,11 @@ node dist/cli/index.js scene plan examples/scenes/intro.json
 node dist/cli/index.js scene render examples/scenes/hana-preview.json --out outputs/hana-custom.mp4
 ~~~
 
-The demo creates outputs/hana-preview.mp4. outputs/ and .cache/ are ignored by Git. The example scene is 4 seconds at 512×640/15 fps, with a single default pose family, head/gaze changes, expressions, and procedural idle/blinking.
+The demos create outputs/hana-preview.mp4, outputs/hana-multipose.mp4 and outputs/hana-multipose-1080p.mp4. outputs/ and .cache/ are ignored by Git. The example scene is 4 seconds at 512×640/15 fps, with a single default pose family, head/gaze changes, expressions, and procedural idle/blinking.
 
 On npm versions that consume flags, use the compiled CLI directly when passing --out.
 
-The renderer can switch validated pose-family rigs at explicit cut boundaries. It rejects unsupported mesh bridges, interpolations and other video effects instead of falsely claiming they work.
+Scene `resolution` is the native rig canvas; optional `output` gives a fitted/padded presentation size and background color. Upscaling a 512×640 rig to 1080p does not add visual detail. The renderer can switch validated pose-family rigs at explicit cut boundaries. It rejects unsupported mesh bridges, interpolations and other video effects instead of falsely claiming they work.
 
 ## Agent workflow
 

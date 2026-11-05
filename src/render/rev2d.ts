@@ -7,6 +7,7 @@ import type { Character, Scene } from "../scene/schemas.js";
 import { compilePerformance, PreviewUnsupportedError } from "./scene-plan.js";
 import { parseRhubarbMouthCuesJson } from "../audio/rhubarb.js";
 import { buildFfmpegArgs, type FfmpegAudioInput } from "../audio/ffmpeg.js";
+import type { VideoOutput } from "../video/output.js";
 import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.js";
 
 const execFileAsync = promisify(execFile);
@@ -34,6 +35,7 @@ export interface FrameResult {
   characterId: string;
   poseFamilies: string[];
   audio?: FfmpegAudioInput;
+  presentation?: VideoOutput;
 }
 
 function insideRoot(path: string, root = process.cwd()): string {
@@ -308,6 +310,7 @@ export async function renderRev2DFrames(
     characterId: character.id,
     poseFamilies: familyNames,
     ...(audio ? { audio } : {}),
+    ...(scene.output ? { presentation: scene.output } : {}),
   };
 }
 
@@ -323,6 +326,7 @@ export async function encodeFrames(
     fps: frames.fps,
     frameCount: frames.count,
     ...(frames.audio ? { audio: frames.audio } : {}),
+    ...(frames.presentation ? { output: frames.presentation } : {}),
   });
   await execute("ffmpeg", args, process.cwd(), 240_000);
   return outputFile;

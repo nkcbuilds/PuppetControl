@@ -10,6 +10,7 @@ import { encodeFrames, renderRev2DFrames } from "../render/rev2d.js";
 import { PreviewUnsupportedError } from "../render/scene-plan.js";
 import { alignAudioWithRhubarb } from "../audio/align.js";
 import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.js";
+import { AvatarWorkflowError, importAvatar, buildAvatar } from "../character/avatar.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -21,13 +22,15 @@ function usage(): never {
     "Usage:\n" +
     "  puppetctl doctor\n" +
     "  puppetctl character inspect <character.json>\n" +
+    "  puppetctl character import <picture.png> --out <project-dir> --id <character-id>\n" +
+    "  puppetctl character build <project-dir> [--force]\n" +
     "  puppetctl audio align <voice.wav> --out <mouth.json> [--binary rhubarb] [--force]\n" +
     "  puppetctl scene validate <scene.json>\n" +
     "  puppetctl scene plan <scene.json>\n" +
     "  puppetctl scene preview <scene.json>\n" +
     "  puppetctl scene render <scene.json> [--out output.mp4]\n" +
     "  puppetctl --help\n" +
-    "\nPreview/render require a configured Rev2D rig; full character compilation is not yet implemented.\n",
+    "\nPreview/render require a configured Rev2D rig. Single-image imports require reviewed landmarks and explicit approval.\n",
   );
   process.exit(2);
 }
@@ -37,8 +40,8 @@ async function run(): Promise<void> {
   if (first === "--help" || first === "help") {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
-      "Available: doctor, character inspect, audio align, scene validate/plan, single-rig scene preview/render.\n" +
-      "Not yet available: animated pose bridges, captions, automatic transcription/TTS, character compile.\n",
+      "Available: doctor, character inspect/import/build, audio align, scene validate/plan, single-rig scene preview/render.\n" +
+      "Not yet available: automatic landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
     );
     return;
   }
@@ -59,8 +62,8 @@ async function run(): Promise<void> {
       node: process.version,
       ffmpegAvailable: ffmpegFound,
       rev2dAvailable,
-      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
-      unavailableFeatures: ["animated-pose-bridges", "character-compile", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
+      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
+      unavailableFeatures: ["animated-pose-bridges", "automatic-landmark-placement", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
     return;
   }
@@ -91,6 +94,20 @@ async function run(): Promise<void> {
       overwrite: values.has("--force"),
     });
     print(aligned);
+    return;
+  }
+
+  if (first === "character" && second === "import" && third) {
+    const flags = process.argv.slice(5);
+    if (flags.length !== 4 || flags[0] !== "--out" || flags[2] !== "--id" || !flags[1] || !flags[3]) usage();
+    print(await importAvatar(third, flags[1], flags[3]));
+    return;
+  }
+
+  if (first === "character" && second === "build" && third) {
+    const flags = process.argv.slice(5);
+    if (flags.length > 1 || (flags.length === 1 && flags[0] !== "--force")) usage();
+    print(await buildAvatar(third, flags[0] === "--force"));
     return;
   }
 
@@ -179,7 +196,7 @@ async function run(): Promise<void> {
 run().catch((error: unknown) => {
   print({
     valid: false,
-    code: error instanceof PreviewUnsupportedError || error instanceof PoseTimelineError ? error.code : "CLI_UNEXPECTED_ERROR",
+    code: error instanceof PreviewUnsupportedError || error instanceof PoseTimelineError || error instanceof AvatarWorkflowError ? error.code : "CLI_UNEXPECTED_ERROR",
     message: error instanceof Error ? error.message : String(error),
   });
   process.exitCode = 1;

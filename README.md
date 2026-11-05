@@ -12,10 +12,11 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - Explicit transition policy: compatible interpolation, authored bridge, deliberate cut, or failure.
 - Parameterized head/gaze/expression timelines compiled to a Rev2D animation.
 - Working local sample with blinking/idle/breathing from Rev2D.
-- Real PNG frame sequence and silent H.264 MP4 export.
+- Real PNG frame sequence and H.264 MP4 export, with optional single-track AAC voiceover.
+- Local Rhubarb speech alignment CLI and eased lip-sync viseme curves driving the mouth.
 - Agent-readable CLI output, tests and CI.
 
-**Not implemented yet:** imported artwork → automatic actor rig, automatic generation of new pose rigs, rendering across distinct pose families, audio/lip sync integration, captions, B-roll, multiple actors, camera compositor, 1080p output for the sample. The JSON pose manifest is *capability metadata* and should not be mistaken for a working posed art asset.
+**Not implemented yet:** imported artwork → automatic actor rig, automatic generation of new pose rigs, rendering across distinct pose families, automatic transcription/TTS and built-in Rhubarb download, captions, B-roll, multiple actors, camera compositor, 1080p output for the sample. The JSON pose manifest is *capability metadata* and should not be mistaken for a working posed art asset.
 
 ## Local quickstart (Node.js 22+, Git, FFmpeg)
 
@@ -61,9 +62,10 @@ Our native animation backend for the spike is **Rev2D**, pinned by the setup hel
 - [Technical concept and architecture](docs/TECHNICAL_CONCEPT.md)
 - [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
 - [Rig backend and known limitations](docs/RIG_BACKEND_EVALUATION.md)
+- [Audio and lip-sync workflow](docs/AUDIO_WORKFLOW.md)
 - [Architecture decision log](docs/DECISIONS.md)
 
-The next milestones are audio/viseme integration, the shared-face and multi-pose transition pipeline, then optional image decomposition and AI-assisted pose generation.
+Audio/lip-sync works with precomputed Rhubarb cues and a locally installed executable. Next is the shared-face and multi-pose transition pipeline, then optional image decomposition and AI-assisted pose generation.
 
 ## License
 

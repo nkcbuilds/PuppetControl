@@ -8,6 +8,7 @@ import { characterSchema } from "../scene/schemas.js";
 import { loadAndValidateScene } from "../scene/load.js";
 import { encodeFrames, renderRev2DFrames } from "../render/rev2d.js";
 import { PreviewUnsupportedError } from "../render/scene-plan.js";
+import { alignAudioWithRhubarb } from "../audio/align.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -19,6 +20,7 @@ function usage(): never {
     "Usage:\n" +
     "  puppetctl doctor\n" +
     "  puppetctl character inspect <character.json>\n" +
+    "  puppetctl audio align <voice.wav> --out <mouth.json> [--binary rhubarb] [--force]\n" +
     "  puppetctl scene validate <scene.json>\n" +
     "  puppetctl scene preview <scene.json>\n" +
     "  puppetctl scene render <scene.json> [--out output.mp4]\n" +
@@ -33,8 +35,8 @@ async function run(): Promise<void> {
   if (first === "--help" || first === "help") {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
-      "Available: doctor, character inspect, scene validate, single-rig scene preview/render.\n" +
-      "Not yet available: multi-pose rendering, captions, audio/lip-sync, character compile.\n",
+      "Available: doctor, character inspect, audio align, scene validate, single-rig scene preview/render.\n" +
+      "Not yet available: multi-pose rendering, captions, automatic transcription/TTS, character compile.\n",
     );
     return;
   }
@@ -55,9 +57,38 @@ async function run(): Promise<void> {
       node: process.version,
       ffmpegAvailable: ffmpegFound,
       rev2dAvailable,
-      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", ...(rev2dAvailable ? ["single-rig-preview"] : [])],
-      unavailableFeatures: ["multi-pose-render", "character-compile", "lip-sync", "audio-composition"],
+      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["single-rig-preview", "single-rig-voice-render"] : [])],
+      unavailableFeatures: ["multi-pose-render", "character-compile", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
+    return;
+  }
+
+  if (first === "audio" && second === "align" && third) {
+    const flags = process.argv.slice(5);
+    const recognized = new Set(["--out", "--binary", "--dialog", "--force"]);
+    const values = new Map<string, string>();
+    for (let index = 0; index < flags.length; index++) {
+      const flag = flags[index];
+      if (!flag || !recognized.has(flag) || values.has(flag)) usage();
+      if (flag === "--force") {
+        values.set(flag, "true");
+        continue;
+      }
+      const value = flags[index + 1];
+      if (!value || value.startsWith("--")) usage();
+      values.set(flag, value);
+      index++;
+    }
+    const output = values.get("--out");
+    if (!output) usage();
+    const aligned = await alignAudioWithRhubarb({
+      audioPath: third,
+      outputPath: output,
+      ...(values.has("--binary") ? { binary: values.get("--binary")! } : {}),
+      ...(values.has("--dialog") ? { dialogPath: values.get("--dialog")! } : {}),
+      overwrite: values.has("--force"),
+    });
+    print(aligned);
     return;
   }
 
@@ -110,9 +141,10 @@ async function run(): Promise<void> {
       resolve(dirname(resolve(third)), actor.characterPath),
       actor.id,
       frameRoot,
+      third,
     );
     if (second === "preview") {
-      print({ valid: true, kind: "frame-preview", ...frameResult, limitations: ["No audio, camera, captions or multiple pose-family rendering yet."] });
+      print({ valid: true, kind: "frame-preview", ...frameResult, limitations: ["Preview produces frames only; no camera, captions or multiple pose-family rendering yet."] });
       return;
     }
     const args = process.argv.slice(5);
@@ -121,13 +153,17 @@ async function run(): Promise<void> {
     if (args.length > 0 && (outputIndex !== 0 || args.length !== 2)) usage();
     const outputFile = args[outputIndex + 1] ?? resolve("outputs", result.scene.id + ".mp4");
     const mp4 = await encodeFrames(frameResult, outputFile);
-    print({ valid: true, kind: "silent-mp4", output: mp4, ...frameResult, limitations: ["No audio, camera, captions or multiple pose-family rendering yet."] });
+    print({ valid: true, kind: frameResult.audio ? "voiced-mp4" : "silent-mp4", output: mp4, ...frameResult, limitations: ["No camera, captions, multiple pose families or automatic Rhubarb invocation yet."] });
     return;
   }
   usage();
 }
 
 run().catch((error: unknown) => {
-  print({ valid: false, code: "CLI_UNEXPECTED_ERROR", message: String(error) });
+  print({
+    valid: false,
+    code: error instanceof PreviewUnsupportedError ? error.code : "CLI_UNEXPECTED_ERROR",
+    message: error instanceof Error ? error.message : String(error),
+  });
   process.exitCode = 1;
 });

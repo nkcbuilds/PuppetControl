@@ -48,10 +48,10 @@
 ## Task board: M3
 
 - [ ] Normalize/measure audio, derive transcript if required.
-- [ ] Generate Rhubarb (or chosen aligner) mouth cues.
-- [ ] Map cues to selected rig mouth controls.
-- [ ] Merge speech and emotion without fighting mouth priority.
-- [ ] Export short MP4 with FFmpeg and inspect audio/viseme timing.
+- [x] Generate Rhubarb mouth cues from a local WAV using the optional installed executable (no auto-download).
+- [x] Map Rhubarb cues to continuous MouthOpen/MouthForm rig tracks with eased boundaries.
+- [x] Merge voice-driven mouth and emotion tracks with explicit mouth ownership.
+- [x] Export and inspect 8.53-second H.264 + AAC voiced MP4 (128 frames at 15 fps); probe confirmed both streams and five inspected mouth/face frames. Subjective lip-sync quality on diverse real-world voices remains an open QA task.
 
 ## Task board: M4
 

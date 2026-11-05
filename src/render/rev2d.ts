@@ -5,6 +5,8 @@ import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { Character, Scene } from "../scene/schemas.js";
 import { compilePerformance, PreviewUnsupportedError } from "./scene-plan.js";
+import { parseRhubarbMouthCuesJson } from "../audio/rhubarb.js";
+import { buildFfmpegArgs, type FfmpegAudioInput } from "../audio/ffmpeg.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -29,6 +31,7 @@ export interface FrameResult {
   height: number;
   manifestPath: string;
   characterId: string;
+  audio?: FfmpegAudioInput;
 }
 
 function insideRoot(path: string, root = process.cwd()): string {
@@ -66,6 +69,7 @@ export async function renderRev2DFrames(
   characterPath: string,
   actorId: string,
   outputDirectory: string,
+  sceneFilePath: string,
 ): Promise<FrameResult> {
   if (!character.render) {
     throw new PreviewUnsupportedError("RIG_REQUIRED", "Character has no rig render configuration.");
@@ -102,7 +106,28 @@ export async function renderRev2DFrames(
   }
 
   const defaults = new Map(raw.parameters.map((item) => [item.id, item.default ?? 0]));
-  const animation = compilePerformance(scene, character, actorId, defaults);
+  const audioEntry = scene.audio[0];
+  let speech: { cues: ReturnType<typeof parseRhubarbMouthCuesJson>; startMs: number } | undefined;
+  let audioInput: FfmpegAudioInput | undefined;
+  if (audioEntry) {
+    if (!audioEntry.cuesPath) {
+      throw new PreviewUnsupportedError("LIP_CUES_REQUIRED", "Audio entry needs a Rhubarb cuesPath (JSON).");
+    }
+    const sceneDir = dirname(resolve(sceneFilePath));
+    const source = insideRoot(resolve(sceneDir, audioEntry.path));
+    const cuesFile = insideRoot(resolve(sceneDir, audioEntry.cuesPath));
+    try {
+      await readFile(source);
+      speech = {
+        cues: parseRhubarbMouthCuesJson(await readFile(cuesFile, "utf8")),
+        startMs: audioEntry.startMs,
+      };
+      audioInput = { path: source, startMs: audioEntry.startMs };
+    } catch (error) {
+      throw new PreviewUnsupportedError("AUDIO_OR_CUES_UNREADABLE", "Audio or cues invalid: " + String(error));
+    }
+  }
+  const animation = compilePerformance(scene, character, actorId, defaults, speech);
   for (const track of animation.tracks) {
     const name = track.target.slice("param:".length);
     const parameter = raw.parameters.find((item) => item.id === name);
@@ -155,6 +180,7 @@ export async function renderRev2DFrames(
       height: response.height ?? raw.meta.height,
       manifestPath: join(framesDir, "manifest.json"),
       characterId: character.id,
+      ...(audioInput ? { audio: audioInput } : {}),
     };
   } finally {
     await unlink(tempModel).catch(() => undefined);
@@ -167,19 +193,13 @@ export async function encodeFrames(
 ): Promise<string> {
   const outputFile = insideRoot(out);
   await mkdir(dirname(outputFile), { recursive: true });
-  await execute(
-    "ffmpeg",
-    [
-      "-hide_banner", "-loglevel", "error", "-y",
-      "-framerate", String(frames.fps),
-      "-i", join(frames.framesDir, "frame_%04d.png"),
-      "-frames:v", String(frames.count),
-      "-c:v", "libx264", "-pix_fmt", "yuv420p",
-      "-movflags", "+faststart",
-      outputFile,
-    ],
-    process.cwd(),
-    240_000,
-  );
+  const args = buildFfmpegArgs({
+    framesPattern: join(frames.framesDir, "frame_%04d.png"),
+    outputPath: outputFile,
+    fps: frames.fps,
+    frameCount: frames.count,
+    ...(frames.audio ? { audio: frames.audio } : {}),
+  });
+  await execute("ffmpeg", args, process.cwd(), 240_000);
   return outputFile;
 }

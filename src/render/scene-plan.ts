@@ -1,4 +1,6 @@
 import type { Character, Scene, SceneEvent } from "../scene/schemas.js";
+import type { RhubarbMouthCue } from "../audio/rhubarb.js";
+import { mapRhubarbCuesToRev2DVisemes } from "../audio/visemes.js";
 
 export interface AnimationKey {
   t: number;
@@ -78,6 +80,7 @@ export function compilePerformance(
   character: Character,
   actorId: string,
   rigDefaults: ReadonlyMap<string, number>,
+  speech?: { cues: readonly RhubarbMouthCue[]; startMs: number },
 ): PerformanceAnimation {
   if (!character.render || character.render.backend !== "rev2d") {
     throw new PreviewUnsupportedError("RIG_REQUIRED", "Character has no configured Rev2D rig.");
@@ -85,8 +88,8 @@ export function compilePerformance(
   if (scene.actors.length !== 1) {
     throw new PreviewUnsupportedError("MULTI_ACTOR_UNSUPPORTED", "Preview currently supports one actor.");
   }
-  if (scene.audio.length > 0) {
-    throw new PreviewUnsupportedError("AUDIO_NOT_IMPLEMENTED", "Audio composition is not integrated into preview yet.");
+  if (scene.audio.length > 0 && !speech) {
+    throw new PreviewUnsupportedError("LIP_CUES_REQUIRED", "Audio needs validated Rhubarb mouth cues before rendering.");
   }
   const tracks = new Map<string, AnimationKey[]>();
   const durationSeconds = scene.durationMs / 1000;
@@ -159,6 +162,30 @@ export function compilePerformance(
       // We cannot truthfully promise a physical nod/gesture without first
       // compiling a semantic motion to a supported engine clip.
       throw new PreviewUnsupportedError("MOTION_NOT_IMPLEMENTED", "Rig motion events are not yet mapped.");
+    }
+  }
+
+  if (speech) {
+    if (scene.audio.length !== 1) {
+      throw new PreviewUnsupportedError("AUDIO_TRACK_INVALID", "Only one audio track is supported.");
+    }
+    const audio = scene.audio[0];
+    if (audio?.actor && audio.actor !== actorId) {
+      throw new PreviewUnsupportedError("AUDIO_ACTOR_MISMATCH", "Audio is assigned to a different actor.");
+    }
+    const shifted = speech.cues.map((cue) => ({
+      ...cue,
+      start: cue.start + speech.startMs / 1000,
+      end: cue.end + speech.startMs / 1000,
+    }));
+    const curves = mapRhubarbCuesToRev2DVisemes(shifted, durationSeconds);
+    // Speech owns the animated mouth; brows/cheeks from expression remain intact.
+    for (const track of curves.tracks) {
+      const id = track.target.slice("param:".length);
+      if (!rigDefaults.has(id)) {
+        throw new PreviewUnsupportedError("RIG_PARAMETER_MISSING", "Rig lacks required mouth control: " + id);
+      }
+      tracks.set(id, track.keys);
     }
   }
 

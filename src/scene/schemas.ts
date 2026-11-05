@@ -120,13 +120,23 @@ export const sceneSchema = z.strictObject({
   audio: z.array(z.strictObject({
     path: z.string().trim().min(1),
     startMs: milliseconds,
-  })).default([]),
+    actor: identifier.optional(),
+    cuesPath: z.string().trim().min(1).optional(),
+  })).max(1).default([]),
   allowCameraCuts: z.boolean().default(false),
   events: z.array(sceneEventSchema).default([]),
 }).superRefine((scene, ctx) => {
   if (new Set(scene.actors.map((actor) => actor.id)).size !== scene.actors.length) {
     ctx.addIssue({ code: "custom", message: "Duplicate actor IDs", path: ["actors"] });
   }
+  scene.audio.forEach((audio, index) => {
+    if (audio.startMs >= scene.durationMs) {
+      ctx.addIssue({ code: "custom", message: "Audio must start before scene ends", path: ["audio", index, "startMs"] });
+    }
+    if (audio.actor && !scene.actors.some((item) => item.id === audio.actor)) {
+      ctx.addIssue({ code: "custom", message: "Audio refers to unknown actor", path: ["audio", index, "actor"] });
+    }
+  });
   scene.events.forEach((event, index) => {
     if (event.atMs >= scene.durationMs) {
       ctx.addIssue({

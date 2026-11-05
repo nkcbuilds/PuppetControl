@@ -61,7 +61,7 @@ A scene then requests:
 { "atMs": 2000, "kind": "pose", "actor": "hana", "name": "pointing", "transition": "interpolate" }
 ~~~
 
-The engine verifies that the two poses use the same rig and have both parameter presets. Otherwise, a same-rig transition cannot be rendered as a continuous gesture.
+The engine verifies that interpolated poses use the same rig and have both parameter presets. A preset can omit a numeric control: that control resets to the rig's declared default rather than inheriting the previous pose's value. A non-neutral default pose also initializes its controls at t=0 even if the scene has no explicit pose event. Otherwise, a same-rig transition cannot be rendered as a continuous gesture.
 
 ## Actual validation
 

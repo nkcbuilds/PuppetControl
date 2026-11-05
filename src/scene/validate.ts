@@ -69,6 +69,13 @@ export function validateSceneCapabilities(
         });
         continue;
       }
+      if (!next.approved) {
+        diagnostics.push({
+          severity: "error", code: "POSE_NOT_APPROVED", path,
+          message: "Pose " + event.name + " is not approved for rendering",
+        });
+        continue;
+      }
 
       const previous = poseByActor.get(event.actor) ?? character.defaultPose;
       const cutAtBoundary = scene.allowCameraCuts && scene.events.some((candidate) =>
@@ -86,6 +93,19 @@ export function validateSceneCapabilities(
           message: previous + " -> " + event.name + ": " + decision.reason,
         });
         continue;
+      }
+      if (decision.mode === "interpolate" && previous !== event.name && character.render) {
+        const prior = character.poseFamilies.find((pose) => pose.name === previous);
+        const previousModel = prior?.modelPath ?? character.render.modelPath;
+        const nextModel = next.modelPath ?? character.render.modelPath;
+        if (prior?.rigId === next.rigId && previousModel === nextModel &&
+          (!character.render.posePresets?.[previous] || !character.render.posePresets?.[event.name])) {
+          diagnostics.push({
+            severity: "error", code: "POSE_PRESET_MISSING", path,
+            message: "Compatible pose interpolation requires numeric presets for both " + previous + " and " + event.name,
+          });
+          continue;
+        }
       }
       if (decision.mode === "cut") {
         diagnostics.push({

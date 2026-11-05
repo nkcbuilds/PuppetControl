@@ -42,6 +42,43 @@ describe("scene capability validator", () => {
     ]);
   });
 
+  it("rejects a known but unapproved pose during preflight validation", () => {
+    const unsafe = characterSchema.parse({
+      ...actor,
+      poseFamilies: actor.poseFamilies.map((pose) =>
+        pose.name === "pointing" ? { ...pose, approved: false } : pose),
+    });
+    const scene = sceneSchema.parse({
+      ...core,
+      events: [{ atMs: 1500, kind: "pose", actor: "maya", name: "pointing" }],
+    });
+    const validation = validateSceneCapabilities(scene, new Map([["maya", unsafe]]));
+    expect(validation.valid).toBe(false);
+    expect(validation.diagnostics).toContainEqual(expect.objectContaining({
+      code: "POSE_NOT_APPROVED",
+      path: "events.0",
+    }));
+  });
+
+  it("fails preflight when an interpolated rig has no target parameter preset", () => {
+    const rigged = characterSchema.parse({
+      ...actor,
+      render: {
+        backend: "rev2d",
+        modelPath: "pose.r2d.json",
+        expressionPresets: { neutral: {} },
+        posePresets: { neutral: { ArmRaise: 0 } },
+      },
+    });
+    const scene = sceneSchema.parse({
+      ...core,
+      events: [{ atMs: 700, kind: "pose", actor: "maya", name: "pointing" }],
+    });
+    const validation = validateSceneCapabilities(scene, new Map([["maya", rigged]]));
+    expect(validation.valid).toBe(false);
+    expect(validation.diagnostics.map((item) => item.code)).toContain("POSE_PRESET_MISSING");
+  });
+
   it("requires a real camera cut event at the transition timestamp", () => {
     const scene = sceneSchema.parse({
       ...core,

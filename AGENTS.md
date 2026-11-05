@@ -26,7 +26,7 @@ Build a real local-first open-source AI-directed 2D animation pipeline. Keep cha
 - If a required integration is unavailable, document blocker and smallest workaround.
 
 ## Local commands
-Check package.json for currently implemented scripts; the CLI supports doctor, character inspect, audio align (when Rhubarb is installed), scene validate, single-rig scene preview and MP4 rendering with optional one audio track. Other documented commands remain design goals:
+Check package.json for currently implemented scripts; the CLI supports doctor, character inspect, audio align (when Rhubarb is installed), scene validate, single-actor scene preview and MP4 rendering with optional one audio track, plus multi-pose hard cuts (no continuous bridge transitions yet). Other documented commands remain design goals:
 - npm test
 - npm run typecheck
 - npm run build

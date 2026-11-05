@@ -27,6 +27,21 @@ describe("pose-family transition policy", () => {
     });
   });
 
+  it("does not morph distinct artwork even when rig ID is the same", () => {
+    const character = characterSchema.parse({
+      schemaVersion: 1,
+      id: "test",
+      defaultPose: "neutral",
+      poseFamilies: [
+        { name: "neutral", rigId: "shared", approved: true, modelPath: "neutral.r2d.json" },
+        { name: "pointing", rigId: "shared", approved: true, modelPath: "pointing.r2d.json" },
+      ],
+      expressions: ["neutral"],
+    });
+    expect(resolveTransition(character, "neutral", "pointing").mode).toBe("unsupported");
+    expect(resolveTransition(character, "neutral", "pointing", { allowCameraCut: true }).mode).toBe("cut");
+  });
+
   it("does not interpolate different rigs", () => {
     expect(resolveTransition(maya, "neutral", "crossed").mode).toBe("unsupported");
     expect(resolveTransition(maya, "neutral", "crossed", {

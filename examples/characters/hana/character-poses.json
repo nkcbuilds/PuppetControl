@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "id": "hana",
+  "defaultPose": "neutral",
+  "poseFamilies": [
+    {
+      "name": "neutral",
+      "rigId": "hana-neutral-art",
+      "head": "shared",
+      "approved": true,
+      "modelPath": "rigs/neutral.r2d.json"
+    },
+    {
+      "name": "pointing",
+      "rigId": "hana-pointing-art",
+      "head": "shared",
+      "approved": true,
+      "modelPath": "rigs/pointing.r2d.json"
+    },
+    {
+      "name": "arms-crossed",
+      "rigId": "hana-crossed-art",
+      "head": "shared",
+      "approved": true,
+      "modelPath": "rigs/arms-crossed.r2d.json"
+    }
+  ],
+  "expressions": ["neutral", "happy", "confused", "annoyed"],
+  "motions": [],
+  "transitions": [
+    { "kind": "cut", "from": "neutral", "to": "pointing" },
+    { "kind": "cut", "from": "pointing", "to": "arms-crossed" },
+    { "kind": "cut", "from": "arms-crossed", "to": "neutral" }
+  ],
+  "render": {
+    "backend": "rev2d",
+    "modelPath": "rigs/neutral.r2d.json",
+    "expressionPresets": {
+      "neutral": { "MouthForm": 0, "Cheek": 0, "BrowLY": 0, "BrowRY": 0 },
+      "happy": { "MouthForm": 0.7, "Cheek": 0.3, "BrowLY": 0.12, "BrowRY": 0.12 },
+      "confused": { "MouthForm": -0.3, "Cheek": 0, "BrowLY": 0.55, "BrowRY": -0.2 },
+      "annoyed": { "MouthForm": -0.5, "Cheek": 0, "BrowLY": -0.45, "BrowRY": -0.45 }
+    }
+  }
+}

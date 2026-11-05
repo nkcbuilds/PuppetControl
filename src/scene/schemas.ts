@@ -7,6 +7,8 @@ const strength = z.number().min(0).max(1);
 export const poseFamilySchema = z.object({
   name: identifier,
   rigId: identifier,
+  /** Optional rig override for a separately authored body pose family. */
+  modelPath: z.string().trim().min(1).optional(),
   head: z.enum(["shared", "alternate"]).default("shared"),
   approved: z.boolean(),
 });
@@ -50,7 +52,13 @@ export const characterSchema = z.strictObject({
   if (new Set(actor.expressions).size !== actor.expressions.length) {
     ctx.addIssue({ code: "custom", message: "Duplicate expression names", path: ["expressions"] });
   }
+  const transitionPairs = new Set<string>();
   for (const [index, transition] of actor.transitions.entries()) {
+    const pair = transition.from + "->" + transition.to;
+    if (transitionPairs.has(pair)) {
+      ctx.addIssue({ code: "custom", message: "Duplicate transition pair: " + pair, path: ["transitions", index] });
+    }
+    transitionPairs.add(pair);
     if (!poses.has(transition.from) || !poses.has(transition.to)) {
       ctx.addIssue({
         code: "custom",

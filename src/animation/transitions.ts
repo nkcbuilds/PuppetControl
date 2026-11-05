@@ -40,7 +40,10 @@ export function resolveTransition(
   }
 
   const requested = options.requested ?? "auto";
-  const sameRig = initial.rigId === target.rigId && initial.head === target.head;
+  // Same rig ID isn't enough; distinct image rigs must not be morphed.
+  const sameRig = initial.rigId === target.rigId
+    && initial.head === target.head
+    && initial.modelPath === target.modelPath;
   if (sameRig && (requested === "auto" || requested === "interpolate")) {
     return { mode: "interpolate", from, to, durationMs: 300, reason: "Compatible rig" };
   }

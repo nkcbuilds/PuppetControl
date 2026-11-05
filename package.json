@@ -17,6 +17,8 @@
     "rig:setup": "node scripts/setup-rev2d.mjs --install",
     "demo:preview": "tsx src/cli/index.ts scene preview examples/scenes/hana-preview.json",
     "demo:render": "tsx src/cli/index.ts scene render examples/scenes/hana-preview.json",
+    "demo:poses": "node scripts/build-demo-poses.mjs",
+    "demo:multipose": "tsx src/cli/index.ts scene render examples/scenes/hana-multipose.json",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build": "tsc",

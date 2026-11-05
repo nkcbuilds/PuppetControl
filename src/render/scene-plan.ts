@@ -81,6 +81,7 @@ export function compilePerformance(
   actorId: string,
   rigDefaults: ReadonlyMap<string, number>,
   speech?: { cues: readonly RhubarbMouthCue[]; startMs: number },
+  options: { allowExternalPoseFamilies?: boolean; currentModelPath?: string } = {},
 ): PerformanceAnimation {
   if (!character.render || character.render.backend !== "rev2d") {
     throw new PreviewUnsupportedError("RIG_REQUIRED", "Character has no configured Rev2D rig.");
@@ -99,18 +100,40 @@ export function compilePerformance(
 
   for (const { event } of events) {
     if (event.kind === "pose") {
-      if (event.name !== character.defaultPose) {
+      const family = character.poseFamilies.find((pose) => pose.name === event.name);
+      const familyModel = family?.modelPath ?? character.render.modelPath;
+      if (options.allowExternalPoseFamilies && options.currentModelPath && familyModel !== options.currentModelPath) {
+        continue;
+      }
+      const poses = character.render.posePresets;
+      const mapping = poses?.[event.name];
+      if (mapping) {
+        const start = event.atMs / 1000;
+        // Same-rig transitions are 300ms in the validated pose resolver.
+        const duration = event.transition === "cut" ? 0 : 300;
+        const end = Math.min(durationSeconds, (event.atMs + duration) / 1000);
+        for (const [parameter, goal] of Object.entries(mapping)) {
+          if (!rigDefaults.has(parameter)) {
+            throw new PreviewUnsupportedError("RIG_PARAMETER_MISSING", "Pose control not in rig: " + parameter);
+          }
+          insertEase(tracks, parameter, start, end, goal, rigDefaults.get(parameter));
+        }
+      } else if (!options.allowExternalPoseFamilies && event.name !== character.defaultPose) {
         throw new PreviewUnsupportedError(
           "POSE_RENDER_NOT_IMPLEMENTED",
-          "Pose '" + event.name + "' requires a validated rig/transition renderer; not supported in the first preview.",
+          "Pose '" + event.name + "' requires a validated rig/transition renderer; not supported in this rig.",
         );
       }
       continue;
     }
-    if (event.kind === "camera" || event.kind === "caption") {
+    if (event.kind === "camera") {
+      // Camera is composed by the video exporter, not by the character rig.
+      continue;
+    }
+    if (event.kind === "caption") {
       throw new PreviewUnsupportedError(
         "COMPOSITION_NOT_IMPLEMENTED",
-        "Camera/caption events require the video compositor milestone.",
+        "Caption rendering is not implemented yet.",
       );
     }
     if (event.actor !== actorId) continue;

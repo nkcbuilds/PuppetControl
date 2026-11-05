@@ -139,6 +139,7 @@ function verifyRigTracks(
 async function renderRigSegment(input: {
   model: Rev2DModel;
   modelPath: string;
+  currentRigFile: string;
   scene: Scene;
   character: Character;
   actorId: string;
@@ -148,18 +149,21 @@ async function renderRigSegment(input: {
   outputDir: string;
   rev2dRoot: string;
 }): Promise<string[]> {
-  const { model, modelPath, scene, character, actorId, speech, startFrame, endFrame, outputDir, rev2dRoot } = input;
+  const { model, modelPath, currentRigFile, scene, character, actorId, speech, startFrame, endFrame, outputDir, rev2dRoot } = input;
 
   // Pose switching is already checked by the frame-accurate timeline planner.
   // Reject non-cut camera effects and captions rather than silently ignoring them.
   const performanceScene: Scene = {
     ...scene,
     events: scene.events.filter((event) =>
-      event.kind !== "pose" && event.kind !== "camera",
+      event.kind !== "camera",
     ),
   };
   const defaults = new Map(model.parameters.map((item) => [item.id, item.default ?? 0]));
-  const performance = compilePerformance(performanceScene, character, actorId, defaults, speech);
+  const performance = compilePerformance(performanceScene, character, actorId, defaults, speech, {
+    allowExternalPoseFamilies: true,
+    currentModelPath: currentRigFile,
+  });
   verifyRigTracks(model, performance.tracks);
 
   if (model.animations.some((animation) => (
@@ -235,12 +239,26 @@ export async function renderRev2DFrames(
     }
     throw error;
   }
-  const transitionsNeedingRealAnimation = plan.segments.filter((segment) => segment.kind === "transition");
-  if (transitionsNeedingRealAnimation.length) {
-    throw new PreviewUnsupportedError(
-      "BRIDGE_RENDER_NOT_IMPLEMENTED",
-      "A requested pose interpolation/bridge needs a real transition rig or authored clip. Only explicit hard cuts work currently.",
-    );
+  for (const segment of plan.segments) {
+    if (segment.kind !== "transition") continue;
+    if (segment.mode === "bridge") {
+      throw new PreviewUnsupportedError(
+        "BRIDGE_RENDER_NOT_IMPLEMENTED",
+        "An authored between-rig bridge clip needs a real transition renderer; it cannot silently become a cut.",
+      );
+    }
+    const from = character.poseFamilies.find((pose) => pose.name === segment.from);
+    const to = character.poseFamilies.find((pose) => pose.name === segment.to);
+    const presets = character.render.posePresets;
+    const fromModel = from?.modelPath ?? character.render.modelPath;
+    const toModel = to?.modelPath ?? character.render.modelPath;
+    if (!from || !to || from.rigId !== to.rigId || fromModel !== toModel ||
+        !presets?.[from.name] || !presets?.[to.name]) {
+      throw new PreviewUnsupportedError(
+        "POSE_MORPH_PRESET_MISSING",
+        "An interpolated pose change requires one shared rig model plus both validated pose parameter presets.",
+      );
+    }
   }
   if (plan.frameCount > 2000) {
     throw new PreviewUnsupportedError("FRAME_LIMIT", "Current renderer supports at most 2000 frames per scene.");
@@ -254,12 +272,12 @@ export async function renderRev2DFrames(
   await mkdir(framesDir, { recursive: true });
   let totalCopied = 0;
   for (const [segmentIndex, segment] of plan.segments.entries()) {
-    if (segment.kind !== "pose") {
-      throw new PreviewUnsupportedError("INTERNAL_POSE_PLAN_ERROR", "Unexpected transition segment.");
-    }
-    const family = character.poseFamilies.find((pose) => pose.name === segment.pose);
+    // An interpolated transition occupies real output frames and uses the same
+    // model as its start/end poses. An authored cross-rig bridge remains blocked.
+    const activePose = segment.kind === "pose" ? segment.pose : segment.from;
+    const family = character.poseFamilies.find((pose) => pose.name === activePose);
     if (!family || !family.approved) {
-      throw new PreviewUnsupportedError("POSE_NOT_APPROVED", "Missing approved pose family: " + segment.pose);
+      throw new PreviewUnsupportedError("POSE_NOT_APPROVED", "Missing approved pose family: " + activePose);
     }
     // Different artwork must use separately declared rig assets; sharing rigId
     // alone does not create a visual pose change.
@@ -268,7 +286,7 @@ export async function renderRev2DFrames(
     const model = await readRig(modelPath, scene);
     const segmentDir = join(framesDir, "segment_" + String(segmentIndex).padStart(3, "0"));
     const files = await renderRigSegment({
-      model, modelPath, scene, character, actorId,
+      model, modelPath, currentRigFile: rigFile, scene, character, actorId,
       ...(speech ? { speech } : {}),
       startFrame: segment.startFrame,
       endFrame: segment.endFrame,
@@ -281,7 +299,7 @@ export async function renderRev2DFrames(
       await copyFile(source, target);
       totalCopied++;
     }
-    if (!familyNames.includes(segment.pose)) familyNames.push(segment.pose);
+    if (segment.kind === "pose" && !familyNames.includes(segment.pose)) familyNames.push(segment.pose);
   }
 
   if (totalCopied !== plan.frameCount) {

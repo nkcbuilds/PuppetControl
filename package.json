@@ -21,6 +21,8 @@
     "demo:multipose": "tsx src/cli/index.ts scene render examples/scenes/hana-multipose.json",
     "demo:1080p": "tsx src/cli/index.ts scene render examples/scenes/hana-multipose-1080p.json",
     "demo:directed": "tsx src/cli/index.ts scene render examples/scenes/hana-directed-1080p.json",
+    "demo:gesture:rig": "npm run demo:poses && node scripts/build-demo-gesture.mjs",
+    "demo:gesture": "npm run demo:gesture:rig && tsx src/cli/index.ts scene render examples/scenes/hana-gesture-1080p.json",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build": "tsc",

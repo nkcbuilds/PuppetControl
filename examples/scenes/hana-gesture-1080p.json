@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "id": "hana-gesture-1080p",
+  "durationMs": 6500,
+  "fps": 30,
+  "resolution": {
+    "width": 512,
+    "height": 640
+  },
+  "output": {
+    "width": 1920,
+    "height": 1080,
+    "background": "#ede8f1"
+  },
+  "actors": [
+    {
+      "id": "hana",
+      "characterPath": "../characters/hana/character-gesture.json"
+    }
+  ],
+  "audio": [],
+  "allowCameraCuts": true,
+  "events": [
+    {
+      "atMs": 0,
+      "actor": "hana",
+      "kind": "pose",
+      "name": "neutral"
+    },
+    {
+      "atMs": 200,
+      "actor": "hana",
+      "kind": "look",
+      "x": 0.25,
+      "y": -0.1,
+      "durationMs": 550
+    },
+    {
+      "atMs": 1000,
+      "actor": "hana",
+      "kind": "expression",
+      "name": "confused",
+      "intensity": 0.6
+    },
+    {
+      "atMs": 2000,
+      "actor": "hana",
+      "kind": "pose",
+      "name": "pointing",
+      "transition": "interpolate"
+    },
+    {
+      "atMs": 2300,
+      "actor": "hana",
+      "kind": "expression",
+      "name": "happy",
+      "intensity": 0.6
+    },
+    {
+      "atMs": 2700,
+      "kind": "camera",
+      "name": "medium",
+      "durationMs": 450
+    },
+    {
+      "atMs": 4200,
+      "kind": "camera",
+      "name": "cut"
+    },
+    {
+      "atMs": 4200,
+      "kind": "camera",
+      "name": "close-up"
+    },
+    {
+      "atMs": 4200,
+      "actor": "hana",
+      "kind": "pose",
+      "name": "arms-crossed",
+      "transition": "cut"
+    },
+    {
+      "atMs": 4500,
+      "actor": "hana",
+      "kind": "expression",
+      "name": "annoyed",
+      "intensity": 0.7
+    },
+    {
+      "atMs": 5500,
+      "kind": "camera",
+      "name": "punch-in",
+      "amount": 0.08,
+      "durationMs": 550
+    }
+  ]
+}

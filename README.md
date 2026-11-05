@@ -10,17 +10,17 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 
 - Versioned JSON scene and character schemas with strict validation.
 - Explicit transition policy: compatible interpolation, authored bridge, deliberate cut, or failure.
-- Frame-accurate pose timeline planner and hard-cut rendering across separately rigged neutral, pointing and crossed-arms body artwork.
+- Frame-accurate pose timeline: genuine same-rig interpolation for neutral→pointing, and deliberate cuts for incompatible crossed-arm artwork.
 - Parameterized head/gaze/expression timelines compiled to a Rev2D animation.
 - Working local sample with blinking/idle/breathing from Rev2D.
 - Real PNG frame sequence and H.264 MP4 export, with optional single-track AAC voiceover.
 - Optional aspect-safe 1920×1080 presentation output independent of native rig canvas size.
 - Experimental camera events (wide/medium/close-up/punch-in) with frame-exact cut boundaries and FFmpeg zoompan.
-- Reproducible vector-art demo with three distinct pose rigs using identical head/face artwork.
+- Reproducible vector-art demo with shared head/face artwork and an ArmRaise rig control for smooth pointing.
 - Local Rhubarb speech alignment CLI and eased lip-sync viseme curves driving the mouth.
 - Agent-readable CLI output, tests and CI.
 
-**Not implemented yet:** imported artwork → automatic actor rig, AI-generated new pose rigs, genuinely smooth between-pose bridge animation, automatic transcription/TTS or built-in Rhubarb download, captions, B-roll, multiple actors, camera compositor, 1080p output for the sample. **The multi-pose demo uses deliberate hard cuts in unchanged camera framing, so visible posture jumps remain.** The pose manifest is capability metadata; a visual pose is available only after its rig file is generated, validated, and inspected.
+**Not implemented yet:** one-image → fully automated actor rigging, AI-generated arbitrary new pose rigs, convincing smooth bridges between unrelated meshes (especially crossed arms), automatic transcription/TTS, captions, B-roll and multiple actors. The arm-raise gesture is genuinely animated, but its artwork is still prototype-quality. Other pose families may require edited hard cuts. The pose manifest is capability metadata; visual poses become usable only after their rig files are generated, validated and inspected.
 
 ## Local quickstart (Node.js 22+, Git, FFmpeg)
 
@@ -36,13 +36,16 @@ npm run demo:poses       # Generate three demo rigs from the pinned Hana source
 npm run demo:multipose   # Export an experimental 3-pose video with hard cuts
 npm run demo:1080p      # Fit native art inside a 1920x1080 widescreen MP4
 npm run demo:directed   # Apply edited camera framing and gradual punch-in
+npm run demo:gesture    # Generate arm-raise rig and export the real smooth gesture demo
 ~~~
 
 The sample uses Rev2D's own **Hana** rig from the pinned MIT-licensed upstream checkout; generated character rig JSON is not checked into this repository. The derived example video is separately attributed and licensed under the original Rev2D terms.
 
 [Watch the experimental multi-pose demo](docs/media/hana-multipose-demo.mp4) (silent, 512×640, hard-cut prototype).
 
-[Watch the 1080p camera-directed demo](docs/media/hana-directed-1080p.mp4) (silent, same rig art, deliberate shot reframes; still not a smooth body transition).
+[Watch the 1080p camera-directed demo](docs/media/hana-directed-1080p.mp4) (silent, deliberate camera reframes; unrelated body artwork still changes at cuts).
+
+[Watch the 1080p arm-raise demo](docs/media/hana-gesture-1080p.mp4) (silent, 30 fps; pointing uses continuous single-rig rotation over 300ms; crossed arms still use a camera cut).
 
 Run a custom scene through the CLI:
 
@@ -56,7 +59,7 @@ The demos create outputs/hana-preview.mp4, outputs/hana-multipose.mp4 and output
 
 On npm versions that consume flags, use the compiled CLI directly when passing --out.
 
-Scene `resolution` is the native rig canvas; optional `output` gives a fitted/padded presentation size and background color. Upscaling a 512×640 rig to 1080p does not add visual detail. The renderer can switch validated pose-family rigs at explicit cut boundaries. It rejects unsupported mesh bridges, interpolations and other video effects instead of falsely claiming they work.
+Scene `resolution` is the native rig canvas; optional `output` gives a fitted/padded presentation size and background color. Upscaling a 512×640 rig to 1080p does not add visual detail. The renderer interpolates a shared rig when both poses provide compatible parameter presets. It rejects cross-rig mesh interpolation and unavailable bridge clips instead of silently rendering broken transitions.
 
 ## Agent workflow
 
@@ -77,9 +80,10 @@ Our native animation backend for the spike is **Rev2D**, pinned by the setup hel
 - [Rig backend and known limitations](docs/RIG_BACKEND_EVALUATION.md)
 - [Audio and lip-sync workflow](docs/AUDIO_WORKFLOW.md)
 - [Experimental camera direction](docs/VIDEO_SHOTS.md)
+- [Continuous arm gesture proof](docs/ANIMATED_GESTURE.md)
 - [Architecture decision log](docs/DECISIONS.md)
 
-Audio/lip-sync works with precomputed Rhubarb cues and a locally installed executable. The three-pose demo reuses an identical face across different rig files. Camera shot framing is now rendered, but physical arm bridges remain the key missing quality feature. After that: image decomposition and AI-assisted pose generation.
+Audio/lip-sync works with precomputed Rhubarb cues and a locally installed executable. The smooth pointing demo reuses the same face and deforms one rig continuously; crossed arms still need a more convincing bridge or intentional cut. Next: richer joint animation, rigging quality, image decomposition and AI-assisted pose generation.
 
 ## License
 

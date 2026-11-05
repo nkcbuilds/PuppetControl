@@ -1,7 +1,7 @@
 # Architecture Decision Log
 
 ## ADR-001 — Reuse an existing 2D rig engine before writing one
-**Status:** provisional — awaiting M1 benchmark.
+**Status:** accepted for initial single-rig rendering (2026-11-05); pose families remain unproven.
 
 Evaluate Rev2D as first candidate; do not commit to it until installation, named parameter control, headless batch rendering, acceptable quality and licensing are demonstrated. Inochi2D and Stretchy Studio are fallback research candidates.
 

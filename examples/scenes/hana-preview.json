@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "hana-preview",
+  "durationMs": 4000,
+  "fps": 15,
+  "resolution": { "width": 512, "height": 640 },
+  "actors": [
+    { "id": "hana", "characterPath": "../characters/hana/character.json" }
+  ],
+  "audio": [],
+  "events": [
+    { "atMs": 0, "actor": "hana", "kind": "pose", "name": "neutral" },
+    { "atMs": 300, "actor": "hana", "kind": "look", "x": 0.6, "y": -0.3, "durationMs": 500 },
+    { "atMs": 1300, "actor": "hana", "kind": "expression", "name": "confused", "intensity": 0.9 },
+    { "atMs": 2100, "actor": "hana", "kind": "look", "x": -0.55, "y": 0.2, "durationMs": 650 },
+    { "atMs": 2900, "actor": "hana", "kind": "expression", "name": "happy", "intensity": 0.9 }
+  ]
+}

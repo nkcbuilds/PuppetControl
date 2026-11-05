@@ -26,7 +26,7 @@ Build a real local-first open-source AI-directed 2D animation pipeline. Keep cha
 - If a required integration is unavailable, document blocker and smallest workaround.
 
 ## Local commands
-Commands below are design goals until they exist; check package.json for actual scripts:
+Check package.json for currently implemented scripts; the CLI supports doctor, character inspect, scene validate, single-rig scene preview and silent scene render. Other documented commands remain design goals:
 - npm test
 - npm run typecheck
 - npm run build

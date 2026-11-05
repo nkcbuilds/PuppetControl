@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "intro",
+  "durationMs": 8000,
+  "fps": 30,
+  "resolution": { "width": 1920, "height": 1080 },
+  "actors": [
+    { "id": "maya", "characterPath": "../characters/maya/character.json" }
+  ],
+  "audio": [],
+  "allowCameraCuts": false,
+  "events": [
+    { "atMs": 0, "actor": "maya", "kind": "pose", "name": "neutral" },
+    { "atMs": 1200, "actor": "maya", "kind": "expression", "name": "confused", "intensity": 0.6 },
+    { "atMs": 2000, "actor": "maya", "kind": "pose", "name": "pointing", "transition": "auto" },
+    { "atMs": 3400, "actor": "maya", "kind": "pose", "name": "arms-crossed", "transition": "auto" },
+    { "atMs": 4300, "actor": "maya", "kind": "expression", "name": "excited", "intensity": 0.8 },
+    { "atMs": 5400, "kind": "camera", "name": "punch-in", "amount": 0.08 }
+  ]
+}

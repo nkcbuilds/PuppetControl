@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "hana",
+  "defaultPose": "neutral",
+  "poseFamilies": [
+    { "name": "neutral", "rigId": "hana-base", "head": "shared", "approved": true }
+  ],
+  "expressions": ["neutral", "happy", "confused", "annoyed"],
+  "motions": [],
+  "transitions": [],
+  "render": {
+    "backend": "rev2d",
+    "modelPath": "../../../.cache/rev2d/examples/hana/hana.r2d.json",
+    "expressionPresets": {
+      "neutral": { "MouthForm": 0, "Cheek": 0, "BrowLY": 0, "BrowRY": 0 },
+      "happy": { "MouthForm": 0.7, "Cheek": 0.3, "BrowLY": 0.12, "BrowRY": 0.12 },
+      "confused": { "MouthForm": -0.3, "Cheek": 0, "BrowLY": 0.55, "BrowRY": -0.2 },
+      "annoyed": { "MouthForm": -0.5, "Cheek": 0, "BrowLY": -0.45, "BrowRY": -0.45 }
+    }
+  }
+}

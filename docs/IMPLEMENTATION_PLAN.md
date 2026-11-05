@@ -20,20 +20,20 @@
 
 - [x] Establish workspace and select project name.
 - [x] Write design and acceptance targets.
-- [ ] Add root AGENTS.md, README, license, CI and a short decision log.
-- [ ] Initialize Git, verify GitHub authentication, create remote.
-- [ ] Push first coherent M0 commit and verify remote/CI.
+- [x] Add root AGENTS.md, README, license, CI and a short decision log.
+- [x] Initialize Git, verify GitHub authentication, create remote.
+- [x] Push first coherent M0 commit to GitHub; verify remote/CI separately.
 
 ## Task board: M1 (highest technical risk)
 
-- [ ] Verify Rev2D current API/CLI, license and installation.
-- [ ] Select a redistributable layered sample actor; if no suitable art is licensed, author a tiny test fixture.
-- [ ] Render 4–6 timestamps at fixed resolution and parameter values.
-- [ ] Build one 5–10-second loop with head yaw/pitch, blinking, mouth aperture and idle motion.
-- [ ] Save preview contact sheet and video (if rendering is supported).
-- [ ] Inspect images directly for clipping/joint deformation.
+- [x] Verify Rev2D current API/CLI, license and installation.
+- [x] Use Rev2D's own MIT-licensed checkout sample Hana (no third-party art committed).
+- [x] Render 5 inspected timestamps at 512x640 and explicit head/eye/mouth poses.
+- [x] Generate a 4-second 15-fps scene from the PuppetControl CLI with continuous head/gaze/expression and Rev2D idle/blink/breathing. Mouth speech remains M3.
+- [x] Render PNG frames and silent 4-second MP4 in ignored local outputs; FFprobe verified 60 frames, 15 fps, 512x640.
+- [x] Inspect multiple actual PNGs, including neutral, mouth-open, and changing head/eye pose. Initial visible result acceptable for a rig spike.
 - [ ] Benchmark per-frame cost; capture CPU/GPU/version details.
-- [ ] Record GO/NO-GO decision in docs/DECISIONS.md.
+- [x] Record conditional GO in docs/DECISIONS.md; do not mistake a single-character spike for multi-pose quality.
 
 ## Task board: M2
 

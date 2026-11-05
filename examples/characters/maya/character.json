@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "maya",
+  "defaultPose": "neutral",
+  "poseFamilies": [
+    { "name": "neutral", "rigId": "base", "head": "shared", "approved": true },
+    { "name": "pointing", "rigId": "base", "head": "shared", "approved": true },
+    { "name": "arms-crossed", "rigId": "crossed", "head": "shared", "approved": true }
+  ],
+  "expressions": ["neutral", "confused", "excited", "happy"],
+  "motions": ["nod", "breathe"],
+  "transitions": [
+    { "kind": "bridge", "from": "pointing", "to": "arms-crossed", "clip": "cross-arms.anim", "durationMs": 400 },
+    { "kind": "cut", "from": "arms-crossed", "to": "neutral" }
+  ]
+}

@@ -74,7 +74,7 @@ Rev2D creates eye-white, iris, upper/lower lid, lash, crease and foreground-hair
 ## 6. Next milestones
 
 1. Wrap Rev2D drawn-variant requests and imports as guarded PuppetControl CLI operations. Require explicit user/artwork permission and renewed review. No new mesh engine.
-2. Add image-based QA probes for rest-pose identity, blink/gaze/mouth activity, and head/neck discontinuities. Quantitative reports are triage, not automatic visual approval.
+2. **Basic pixel-QA probe implemented** for same-resolution PNG pairs, with optional eye/face region and opaque-border transparency checks. Fresh local 512×640 Hana rest/source RGB mean error 0.0002/255; eye crop rest/closed RGB mean error 33.5879/255 (36.4392% changed), with 0 new transparent border pixels. Full methodology and caution in [PIXEL_QA.md](PIXEL_QA.md). Multi-frame discontinuity scans and meaningful aesthetic review remain open.
 3. Build a diverse rights-cleared benchmark matrix: eye size, hair over face, accessories/glasses, different skin tones and line styles, opaque versus transparent backgrounds and constrained 3/4 views. Track success/failure on each, not just demos.
 4. Only after a reliable single actor: improve body-pose transitions, synchronized multi-actor shots and user-facing authoring polish.
 

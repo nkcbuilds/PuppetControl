@@ -14,6 +14,7 @@ import { AvatarWorkflowError, importAvatar, buildAvatar } from "../character/ava
 import { prepareLandmarkTask, stageLandmarks, acceptLandmarks } from "../character/landmarks.js";
 import { proposeCodexLandmarks, codexExecutableForPlatform } from "../character/vision-codex.js";
 import { verifyAvatarBuildRecord } from "../character/provenance.js";
+import { comparePngFiles, parsePixelRegionArgument } from "../character/pixel-qa.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -27,6 +28,7 @@ function usage(): never {
     "  puppetctl character inspect <character.json>\n" +
     "  puppetctl character import <picture.png> --out <project-dir> --id <character-id>\n" +
     "  puppetctl character build <project-dir> [--force]\n" +
+    "  puppetctl character qa compare <reference.png> <render.png> [--region x,y,w,h]\n" +
     "  puppetctl character landmarks assist <project-dir>\n" +
     "  puppetctl character landmarks propose <project-dir> --provider codex\n" +
     "  puppetctl character landmarks stage <project-dir> --proposal <proposal.json>\n" +
@@ -47,7 +49,7 @@ async function run(): Promise<void> {
   if (first === "--help" || first === "help") {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
-      "Available: doctor, character inspect/import/build, landmark assist/propose/stage/accept, audio align, scene validate/plan, single-rig scene preview/render.\n" +
+      "Available: doctor, character inspect/import/build, image pixel-QA compare, landmark assist/propose/stage/accept, audio align, scene validate/plan, single-rig scene preview/render.\n" +
       "Not yet available: reliable one-click landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
     );
     return;
@@ -72,7 +74,7 @@ async function run(): Promise<void> {
       ffmpegAvailable: ffmpegFound,
       rev2dAvailable,
       codexCliAvailable,
-      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
+      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(ffmpegFound ? ["png-pixel-qa"] : []), ...(rev2dAvailable ? ["assisted-png-avatar-import", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
       unavailableFeatures: ["animated-pose-bridges", "automatic-landmark-placement", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
     return;
@@ -118,6 +120,15 @@ async function run(): Promise<void> {
     const flags = process.argv.slice(5);
     if (flags.length > 1 || (flags.length === 1 && flags[0] !== "--force")) usage();
     print(await buildAvatar(third, flags[0] === "--force"));
+    return;
+  }
+
+  if (first === "character" && second === "qa" && third === "compare") {
+    const [reference, candidate, ...flags] = process.argv.slice(5);
+    if (!reference || !candidate ||
+      (flags.length !== 0 && (flags.length !== 2 || flags[0] !== "--region" || !flags[1]))) usage();
+    const region = flags.length ? parsePixelRegionArgument(flags[1]!) : undefined;
+    print({ valid: true, comparison: await comparePngFiles(reference, candidate, region) });
     return;
   }
 

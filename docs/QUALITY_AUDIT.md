@@ -73,7 +73,7 @@ Rev2D creates eye-white, iris, upper/lower lid, lash, crease and foreground-hair
 
 ## 6. Next milestones
 
-1. Wrap Rev2D drawn-variant requests and imports as guarded PuppetControl CLI operations. Require explicit user/artwork permission and renewed review. No new mesh engine.
+1. **Guarded local drawn-variant CLI added:** request/status/import supported by pinned Rev2D. Request masks for eyes_closed, eyes_half and mouth_a on a fresh 512×640 Hana import were generated and visually inspected. Importing an unchanged eyes_closed image correctly failed upstream with code `unchanged` and did not approve the character. A separate *throwaway* Hana project then accepted locally hand-procedurally-redrawn eyes_closed and eyes_half artwork (both with outsideDiff=0 and nearDiff=0); approval remained false. Actual eyes review frames showed the closed-eye lashes more continuous than the original mesh deformation, but a faint lower contour, too-flat half-open eyelids and double contours during fades remained. **These test drawings are not acceptable character art**, are only in ignored local .cache, and are not redistributed. No AI provider was used and no arbitrary-character quality claim follows.
 2. Add image-based QA probes for rest-pose identity, blink/gaze/mouth activity, and head/neck discontinuities. Quantitative reports are triage, not automatic visual approval.
 3. Build a diverse rights-cleared benchmark matrix: eye size, hair over face, accessories/glasses, different skin tones and line styles, opaque versus transparent backgrounds and constrained 3/4 views. Track success/failure on each, not just demos.
 4. Only after a reliable single actor: improve body-pose transitions, synchronized multi-actor shots and user-facing authoring polish.

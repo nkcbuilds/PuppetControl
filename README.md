@@ -24,6 +24,7 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - An opt-in `character approve <project> --reviewed` gate for visually inspected imported rigs; asset fingerprints and review sheets are checked before approval.
 - `scene new` creates editable expression/look/dialogue scenes from an already approved rig without changing the character; voice requires genuine Rhubarb cues.
 - Non-destructive MP4 export: output files are promoted only after successful FFmpeg encoding, with overwrite requiring explicit `--force`.
+- Guarded **local drawn eye/mouth variant** request, status and import commands using Rev2D masks and sprites. Imported drawings revoke approval and require a fresh visual review; no image generation happens automatically.
 - Agent-readable CLI output, tests and CI.
 
 **Not implemented yet:** fully automatic landmark placement or reliable one-click rigging, AI-generated arbitrary new pose rigs, convincing smooth bridges between unrelated meshes (especially crossed arms), automatic transcription/TTS, captions, B-roll and multiple actors. The arm-raise gesture is genuinely animated, but its artwork is still prototype-quality. Other pose families may require edited hard cuts. The pose manifest is capability metadata; visual poses become usable only after their rig files are generated, validated and inspected.
@@ -48,6 +49,7 @@ npm run demo:avatar    # Import a freshly rendered flat PNG and create an unappr
 npm run demo:first-video   # Prepare an ignored, unapproved Hana fixture for review
 # After actually reviewing the pinned Hana test fixture only:
 # node scripts/demo-first-video.mjs --reviewed-sample
+# For a built imported avatar, see docs/CHARACTER_IMPORT.md for drawn-variant request/import
 ~~~
 
 The sample uses Rev2D's own **Hana** rig from the pinned MIT-licensed upstream checkout; generated character rig JSON is not checked into this repository. The derived example video is separately attributed and licensed under the original Rev2D terms.

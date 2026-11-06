@@ -18,6 +18,7 @@ import { verifyAvatarBuildRecord } from "../character/provenance.js";
 import { approveImportedAvatar } from "../character/review-approval.js";
 import { FirstVideoSceneError } from "../scene/first-video.js";
 import { createFirstVideoFile } from "../scene/create-first-video-file.js";
+import { requestDrawnVariants, statusDrawnVariants, importDrawnVariants } from "../character/drawn-variants.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -32,6 +33,9 @@ function usage(): never {
     "  puppetctl character import <picture.png> --out <project-dir> --id <character-id>\n" +
     "  puppetctl character build <project-dir> [--force]\n" +
     "  puppetctl character approve <project-dir> --reviewed\n" +
+    "  puppetctl character variants request <project-dir> [variant-id ...]\n" +
+    "  puppetctl character variants status <project-dir>\n" +
+    "  puppetctl character variants import <project-dir> <variant-id ...> --reviewed-art\n" +
     "  puppetctl character landmarks assist <project-dir>\n" +
     "  puppetctl character landmarks propose <project-dir> --provider codex\n" +
     "  puppetctl character landmarks stage <project-dir> --proposal <proposal.json>\n" +
@@ -53,7 +57,7 @@ async function run(): Promise<void> {
   if (first === "--help" || first === "help") {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
-      "Available: doctor, character inspect/import/build/approve, landmark assist/propose/stage/accept, audio align, scene new/validate/plan, single-rig scene preview/render.\n" +
+      "Available: doctor, character inspect/import/build/approve, drawn-variant request/status/import, landmark assist/propose/stage/accept, audio align, scene new/validate/plan, single-rig scene preview/render.\n" +
       "Not yet available: reliable one-click landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
     );
     return;
@@ -78,7 +82,7 @@ async function run(): Promise<void> {
       ffmpegAvailable: ffmpegFound,
       rev2dAvailable,
       codexCliAvailable,
-      availableFeatures: ["character-inspect", "scene-create", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "explicit-visual-approval", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
+      availableFeatures: ["character-inspect", "scene-create", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "explicit-visual-approval", "local-drawn-variants", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
       unavailableFeatures: ["animated-pose-bridges", "automatic-landmark-placement", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
     return;
@@ -132,6 +136,22 @@ async function run(): Promise<void> {
     if (flags.length !== 1 || flags[0] !== "--reviewed") usage();
     print(await approveImportedAvatar(third, true));
     return;
+  if (first === "character" && second === "variants" && third) {
+    const [project, ...flags] = process.argv.slice(5);
+    if (!project) usage();
+    if (third === "status" && flags.length === 0) {
+      print(await statusDrawnVariants(project));
+      return;
+    }
+    if (third === "request") {
+      print(await requestDrawnVariants(project, flags));
+      return;
+    }
+    if (third === "import" && flags.length >= 2 && flags[flags.length - 1] === "--reviewed-art") {
+      print(await importDrawnVariants(project, flags.slice(0, -1)));
+      return;
+    }
+    usage();
   }
 
   if (first === "character" && second === "landmarks" && third) {

@@ -28,7 +28,7 @@ function requireInside(root: string, target: string): string {
 }
 
 /** Check symlink resolution for the nearest existing ancestor as well as lexical path confinement. */
-async function checkedPath(root: string, target: string): Promise<string> {
+export async function checkedPath(root: string, target: string): Promise<string> {
   const rootReal = await realpath(root);
   const absolute = requireInside(rootReal, target);
   let ancestor = absolute;
@@ -130,7 +130,7 @@ interface CommandOutput {
   [key: string]: unknown;
 }
 
-async function runRev2D(repo: string, args: string[], timeout = 120_000): Promise<CommandOutput> {
+export async function runRev2D(repo: string, args: string[], timeout = 120_000): Promise<CommandOutput> {
   const entry = join(repo, "bin", "rev2d.js");
   try {
     const { stdout } = await execFileAsync(process.execPath, [entry, ...args, "--json"], {
@@ -153,7 +153,7 @@ async function runRev2D(repo: string, args: string[], timeout = 120_000): Promis
   }
 }
 
-async function pinnedRev2D(root: string): Promise<string> {
+export async function pinnedRev2D(root: string): Promise<string> {
   const repo = await checkedPath(root, resolve(root, process.env.PUPPETCONTROL_REV2D_ROOT ?? ".cache/rev2d"));
   try {
     const { stdout } = await execFileAsync("git", ["-C", repo, "rev-parse", "HEAD"], {

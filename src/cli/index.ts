@@ -19,6 +19,7 @@ import { approveImportedAvatar } from "../character/review-approval.js";
 import { FirstVideoSceneError } from "../scene/first-video.js";
 import { createFirstVideoFile } from "../scene/create-first-video-file.js";
 import { requestDrawnVariants, statusDrawnVariants, importDrawnVariants } from "../character/drawn-variants.js";
+import { comparePngFiles, parsePixelRegionArgument } from "../character/pixel-qa.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -36,6 +37,7 @@ function usage(): never {
     "  puppetctl character variants request <project-dir> [variant-id ...]\n" +
     "  puppetctl character variants status <project-dir>\n" +
     "  puppetctl character variants import <project-dir> <variant-id ...> [--experimental-short-fade] --reviewed-art\n" +
+    "  puppetctl character qa compare <reference.png> <render.png> [--region x,y,w,h]\n" +
     "  puppetctl character landmarks assist <project-dir>\n" +
     "  puppetctl character landmarks propose <project-dir> --provider codex\n" +
     "  puppetctl character landmarks stage <project-dir> --proposal <proposal.json>\n" +
@@ -57,8 +59,7 @@ async function run(): Promise<void> {
   if (first === "--help" || first === "help") {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
-      "Available: doctor, character inspect/import/build/approve, drawn-variant request/status/import, landmark assist/propose/stage/accept, audio align, scene new/validate/plan, single-rig scene preview/render.\n" +
-      "Not yet available: reliable one-click landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
+      "Available: doctor, character inspect/import/build/approve, drawn-variant request/status/import, pixel-QA compare, landmark assist/propose/stage/accept, audio align, scene new/validate/plan, single-rig scene preview/render.\n" +\n      "Not yet available: reliable one-click landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
     );
     return;
   }
@@ -82,7 +83,7 @@ async function run(): Promise<void> {
       ffmpegAvailable: ffmpegFound,
       rev2dAvailable,
       codexCliAvailable,
-      availableFeatures: ["character-inspect", "scene-create", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "explicit-visual-approval", "local-drawn-variants", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
+      availableFeatures: ["character-inspect", "scene-create", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(ffmpegFound ? ["png-pixel-qa"] : []), ...(rev2dAvailable ? ["assisted-png-avatar-import", "explicit-visual-approval", "local-drawn-variants", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
       unavailableFeatures: ["animated-pose-bridges", "automatic-landmark-placement", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
     return;
@@ -136,6 +137,8 @@ async function run(): Promise<void> {
     if (flags.length !== 1 || flags[0] !== "--reviewed") usage();
     print(await approveImportedAvatar(third, true));
     return;
+  }
+
   if (first === "character" && second === "variants" && third) {
     const [project, ...flags] = process.argv.slice(5);
     if (!project) usage();
@@ -156,6 +159,15 @@ async function run(): Promise<void> {
       return;
     }
     usage();
+  }
+
+  if (first === "character" && second === "qa" && third === "compare") {
+    const [reference, candidate, ...flags] = process.argv.slice(5);
+    if (!reference || !candidate ||
+      (flags.length !== 0 && (flags.length !== 2 || flags[0] !== "--region" || !flags[1]))) usage();
+    const region = flags.length ? parsePixelRegionArgument(flags[1]!) : undefined;
+    print({ valid: true, comparison: await comparePngFiles(reference, candidate, region) });
+    return;
   }
 
   if (first === "character" && second === "landmarks" && third) {

@@ -18,6 +18,7 @@ Build a real local-first open-source AI-directed 2D animation pipeline. Keep cha
 - Do not overwrite user images, generated assets, secrets or unrelated work.
 - Use only properly licensed sample media; avoid checking in proprietary test assets.
 - Imported scene/character files are untrusted inputs; validate them.
+- Imported avatar build fingerprints must match the exact original PNG, landmark spec, model and textures before scene rendering. Force rebuilds revoke approval before touching existing generated assets.
 - Keep code/provider credentials out of logs, source files and commits.
 - Do not silently upgrade dependencies, replace a rig engine, or delete other work.
 - No concurrent edits to the same module without explicit ownership.

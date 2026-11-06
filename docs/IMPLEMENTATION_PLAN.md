@@ -67,13 +67,17 @@
 - [x] Choose the pinned Rev2D single-image avatar builder as the first assisted decomposition/rigging adapter, rather than adding a second engine.
 - [ ] Add canonical identity/reference image and new-pose prompt templates. A tested landmark fixture now exists, but AI body pose prompts remain future work.
 - [ ] Align generated pose canvas, rig anchors and attachment transforms.
-- [ ] Save provenance/model/version/seed and QA status per pose.
+- [x] Save source/art/spec/model/texture SHA-256 provenance for new imported avatars and check it during scene validation. Pose-generation seeds and per-pose QA history remain future work.
 - [ ] Generate a new pose once; use same cached asset in second project.
 - [x] Support manual landmark repair, explicit rebuild, review sheets, and approval gating; generated rigs default to unapproved. Partial stage regeneration remains future work.
 - [x] Add image-hash-bound Claude/Codex landmark tasks, isolated proposal validation/overlay review, stale-candidate detection and explicit acceptance that revokes prior approvals.
 - [x] Implement optional Codex image-to-landmark proposal adapter; run two real-image Hana trials, normalize limited schema formatting errors, and build/inspect generated candidate review sheets.
 - [ ] Reach robust fully automatic landmark inference across diverse supplied illustrations and remove visible eye/head deformation defects; no reliable one-click rigging claim yet.
-- [ ] Add practical motion visual-QA heuristics and human-readable reports; geometry validation and manual review remain separate.
+- [x] Add conservative geometry triage for low torso pivot/fade, missing/outside-eye iris and shearing head pivot; return nonblocking warnings.
+- [x] Revoke existing approval before any --force build mutates Rev2D outputs, and fail closed on stale source/spec/model/texture fingerprints.
+- [x] Eliminate reproduced black edge artifacts caused by alpha-zero warped pixels in H.264: composite frames onto scene background, with a 60-frame before/after comparison.
+- [ ] Add pixel-level motion QA probes and a reviewable report; automated geometry warnings are not proof of visual quality.
+- [ ] Wrap Rev2D's existing drawn closed-eye/mouth variants to reduce visible deformation artifacts without writing another mesh engine.
 
 ## Acceptance benchmark
 

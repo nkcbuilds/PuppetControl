@@ -13,13 +13,14 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - Frame-accurate pose timeline: genuine same-rig interpolation for neutral→pointing, and deliberate cuts for incompatible crossed-arm artwork.
 - Parameterized head/gaze/expression timelines compiled to a Rev2D animation.
 - Working local sample with blinking/idle/breathing from Rev2D.
-- Real PNG frame sequence and H.264 MP4 export, with optional single-track AAC voiceover.
+- Real PNG frame sequence and H.264 MP4 export, with optional single-track AAC voiceover. The video renderer composites transparent mesh-edge pixels against the chosen background (default `#f0eaf4`) to prevent black border artifacts.
 - Optional aspect-safe 1920×1080 presentation output independent of native rig canvas size.
 - Experimental camera events (wide/medium/close-up/punch-in) with frame-exact cut boundaries and FFmpeg zoompan.
 - Reproducible vector-art demo with a shared head/face and independent ArmRaise / ElbowExtend controls for reversible two-joint pointing.
 - Local Rhubarb speech alignment CLI and eased lip-sync viseme curves driving the mouth.
 - Assisted single-PNG character onboarding through Rev2D landmarks, local rig build, review sheets, unapproved-by-default manifest, and starter scene.
 - Agent-guided landmark proposals: source-hash-bound task, optional **tested** Codex image-based suggestion, isolated geometry validation, visual overlay and explicit review/acceptance that revokes old rig approval.
+- Imported avatar asset provenance: source/spec/model/texture fingerprints checked by scene validation; force rebuild revokes approval before modifying art. Suspicious landmarks generate nonblocking geometry warnings.
 - Agent-readable CLI output, tests and CI.
 
 **Not implemented yet:** fully automatic landmark placement or reliable one-click rigging, AI-generated arbitrary new pose rigs, convincing smooth bridges between unrelated meshes (especially crossed arms), automatic transcription/TTS, captions, B-roll and multiple actors. The arm-raise gesture is genuinely animated, but its artwork is still prototype-quality. Other pose families may require edited hard cuts. The pose manifest is capability metadata; visual poses become usable only after their rig files are generated, validated and inspected.
@@ -92,9 +93,10 @@ Our native animation backend for the spike is **Rev2D**, pinned by the setup hel
 - [Assisted single-image import and QA](docs/CHARACTER_IMPORT.md)
 - [Agent-guided landmark review and acceptance](docs/LANDMARK_AGENT_WORKFLOW.md)
 - [Optional Codex vision inference: real-image results and limitations](docs/CODEX_VISION_LANDMARKS.md)
+- [Deep quality and reliability audit with observed pixel measurements](docs/QUALITY_AUDIT.md)
 - [Architecture decision log](docs/DECISIONS.md)
 
-Audio/lip-sync works with precomputed Rhubarb cues and a locally installed executable. The smooth pointing demo reuses the same face and deforms one rig continuously; crossed arms still need a more convincing bridge or intentional cut. Next: improve landmark detection quality with a real optional image-understanding provider, add machine-assisted visual QA, and generate identity-consistent new body poses.
+Audio/lip-sync works with precomputed Rhubarb cues and a locally installed executable. The smooth pointing demo reuses the same face and deforms one rig continuously; crossed arms still need a more convincing bridge or intentional cut. Next: polish eyelid and mouth deformation by reusing Rev2D's reviewed drawn variants, expand automated image-quality probes and evaluate diverse source artwork. Do not confuse data validation with visual quality.
 
 ## License
 

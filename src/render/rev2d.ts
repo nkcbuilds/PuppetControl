@@ -10,8 +10,21 @@ import { buildFfmpegArgs, type FfmpegAudioInput } from "../audio/ffmpeg.js";
 import type { VideoOutput } from "../video/output.js";
 import type { SceneEvent } from "../scene/schemas.js";
 import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.js";
+import { verifyAvatarBuildRecord } from "../character/provenance.js";
+import { pinnedRev2D } from "../character/avatar.js";
 
 const execFileAsync = promisify(execFile);
+
+/** MP4 cannot preserve alpha. Flatten the renderer's transparent warp margins, not to black. */
+export const DEFAULT_RENDER_BACKGROUND = "#f0eaf4";
+export function backgroundForScene(scene: Pick<Scene, "output">): string {
+  return scene.output?.background ?? DEFAULT_RENDER_BACKGROUND;
+}
+
+/** Applied to every generated frame, including preview frames, before H.264 drops alpha. */
+export function rev2dFrameRenderingFlags(scene: Pick<Scene, "output">): string[] {
+  return ["--bg", backgroundForScene(scene), "--ss", "1", "--json"];
+}
 
 interface Rev2DParameter {
   id: string;
@@ -193,7 +206,7 @@ async function renderRigSegment(input: {
       "--anim", baseIdle ? "idle" : performance.id,
     ];
     if (baseIdle) args.push("--anim", performance.id);
-    args.push("--times", frameTimes.join(","), "--ss", "1", "--json");
+    args.push("--times", frameTimes.join(","), ...rev2dFrameRenderingFlags(scene));
     const stdout = await execute(process.execPath, args, rev2dRoot, 240_000);
     const response = JSON.parse(stdout) as { files?: string[]; width?: number; height?: number };
     if (!Array.isArray(response.files) || response.files.length !== frameTimes.length) {
@@ -228,6 +241,11 @@ export async function renderRev2DFrames(
   }
   if (scene.actors.length !== 1) {
     throw new PreviewUnsupportedError("MULTI_ACTOR_UNSUPPORTED", "Renderer currently supports one actor.");
+  }
+  if (character.provenance) {
+    const integrity = await verifyAvatarBuildRecord(characterPath, character.render.modelPath);
+    if (!integrity.valid) throw new PreviewUnsupportedError(integrity.code, integrity.message);
+    await pinnedRev2D(process.cwd());
   }
 
   let plan: ReturnType<typeof planPoseTimeline>;

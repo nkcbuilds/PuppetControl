@@ -3,6 +3,7 @@ import { copyFile, mkdir, readFile, stat, writeFile, rename, unlink } from "node
 import { join, resolve, relative, sep } from "node:path";
 import { characterSchema } from "../scene/schemas.js";
 import { AvatarWorkflowError, checkedPath, pinnedRev2D, runRev2D, parsePngSize } from "./avatar.js";
+import { assessAvatarGeometry } from "./geometry-quality.js";
 
 const FORMAT = "puppetcontrol-landmarks-v1";
 const SHA = /^[0-9a-f]{64}$/;
@@ -228,8 +229,11 @@ export async function stageLandmarks(input: string, proposalFile: string, root =
   };
   await writeFile(join(dir, "proposal-meta.json"), JSON.stringify(metadata, null, 2) + "\n", { flag: "wx" });
   return {
-    valid: true, status: "overlay-review-required", candidateDir: dir, overlay,
+    valid: true, status: assessAvatarGeometry(candidate).length
+      ? "overlay-review-required-with-warnings" : "overlay-review-required",
+    candidateDir: dir, overlay,
     originalUnchanged: true, approved: false,
+    geometryWarnings: assessAvatarGeometry(candidate),
     next: "Inspect the overlay, then explicitly accept it with --reviewed.",
   };
 }
@@ -314,6 +318,7 @@ export async function acceptLandmarks(
   return {
     valid: true, status: "rebuild-required", approved: false,
     avatarSpecPath: project.specFile, backup, approvalRevoked,
+    geometryWarnings: assessAvatarGeometry(candidateSpec),
     next: "Run character build --force, visually review sheets, then manually approve the rig if acceptable.",
   };
 }

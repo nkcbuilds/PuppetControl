@@ -4,6 +4,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { AvatarWorkflowError, checkedPath } from "./avatar.js";
 import { composeCandidate, prepareLandmarkTask, stageLandmarks } from "./landmarks.js";
+import { assessAvatarGeometry } from "./geometry-quality.js";
 
 const MAX_OUTPUT_BYTES = 200_000;
 
@@ -255,9 +256,11 @@ export async function proposeCodexLandmarks(projectPath: string, root = process.
   try {
     const staged = await stageLandmarks(project, proposalFile, root);
     return {
-      valid: true, status: qualityWarnings.length ? "overlay-review-required-with-warnings" : "overlay-review-required", provider: "codex",
+      valid: true, status: (qualityWarnings.length || staged.geometryWarnings.length)
+        ? "overlay-review-required-with-warnings" : "overlay-review-required", provider: "codex",
       proposalFile, candidateDir: staged.candidateDir, overlay: staged.overlay,
-      qualityWarnings, normalizedFields: normalized.changes, approved: false,
+      qualityWarnings, geometryWarnings: staged.geometryWarnings,
+      normalizedFields: normalized.changes, approved: false,
       next: "Inspect the source and candidate overlay. Only accept with --reviewed after genuine visual inspection.",
     };
   } catch (error) {
@@ -265,7 +268,9 @@ export async function proposeCodexLandmarks(projectPath: string, root = process.
         error.code !== "REV2D_AVATAR_FAILED") throw error;
     return {
       valid: false, status: "proposal-needs-revision", provider: "codex",
-      proposalFile, approved: false, qualityWarnings, normalizedFields: normalized.changes, diagnostics: error.message,
+      proposalFile, approved: false, qualityWarnings,
+      geometryWarnings: assessAvatarGeometry({ ...(parsed.landmarks as object), image: spec.image }),
+      normalizedFields: normalized.changes, diagnostics: error.message,
       next: "Rev2D rejected suggested geometry. Open source, correct the proposal JSON and run landmarks stage manually.",
     };
   }

@@ -2,8 +2,22 @@ import { describe, it, expect } from "vitest";
 import { sceneSchema } from "../src/scene/schemas.js";
 import { buildFitVideoFilter } from "../src/video/output.js";
 import { buildFfmpegArgs } from "../src/audio/ffmpeg.js";
+import { backgroundForScene, rev2dFrameRenderingFlags, DEFAULT_RENDER_BACKGROUND } from "../src/render/rev2d.js";
 
 describe("presentation output sizing", () => {
+  it("uses an opaque background for alpha gaps from moving mesh edges", () => {
+    expect(DEFAULT_RENDER_BACKGROUND).toBe("#f0eaf4");
+    expect(backgroundForScene({})).toBe("#f0eaf4");
+    expect(backgroundForScene({ output: { width: 512, height: 640, background: "#efe7f1" } }))
+      .toBe("#efe7f1");
+    expect(rev2dFrameRenderingFlags({})).toEqual([
+      "--bg", "#f0eaf4", "--ss", "1", "--json",
+    ]);
+    expect(rev2dFrameRenderingFlags({
+      output: { width: 512, height: 640, background: "#efe7f1" },
+    })).toEqual(["--bg", "#efe7f1", "--ss", "1", "--json"]);
+  });
+
   it("fits without distorting the source ratio and pads for 1080p", () => {
     expect(buildFitVideoFilter({
       width: 1920, height: 1080, background: "#f0eaf4",

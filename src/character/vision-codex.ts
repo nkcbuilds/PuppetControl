@@ -7,6 +7,11 @@ import { composeCandidate, prepareLandmarkTask, stageLandmarks } from "./landmar
 
 const MAX_OUTPUT_BYTES = 200_000;
 
+/** On Windows, require the native binary; never run an untrusted image prompt through cmd.exe. */
+export function codexExecutableForPlatform(platform: NodeJS.Platform): string {
+  return platform === "win32" ? "codex.exe" : "codex";
+}
+
 /**
  * Codex may consume supplemental stdin even when a positional prompt was
  * supplied. An inherited open pipe hangs the CLI at "Reading additional
@@ -32,6 +37,23 @@ export function launchVisionSubprocess(
       else reject(new Error("Codex process exit " + code + ": " + lastError.slice(-650)));
     });
   });
+}
+
+/** A successfully exited provider still must write a real bounded JSON response file. */
+export async function readVisionOutput(path: string): Promise<string> {
+  let details;
+  try {
+    details = await stat(path);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      throw new AvatarWorkflowError("VISION_RESPONSE_MISSING", "Codex completed without writing its response file");
+    }
+    throw error;
+  }
+  if (!details.isFile() || details.size > MAX_OUTPUT_BYTES) {
+    throw new AvatarWorkflowError("VISION_RESPONSE_TOO_LARGE", "Codex response must be a JSON file below 200 KB");
+  }
+  return readFile(path, "utf8");
 }
 
 export interface CodexVisionArgs {
@@ -205,20 +227,24 @@ export async function proposeCodexLandmarks(projectPath: string, root = process.
   });
 
   try {
-    await launchVisionSubprocess("codex", args, resolve(root));
+    await launchVisionSubprocess(codexExecutableForPlatform(process.platform), args, resolve(root));
   } catch (error) {
-    const failure = error as Error;
+    const failure = error as NodeJS.ErrnoException;
+    if (failure.code === "ENOENT") {
+      throw new AvatarWorkflowError(
+        "CODEX_CLI_NOT_AVAILABLE",
+        process.platform === "win32"
+          ? "Native codex.exe is not available on PATH. npm codex.cmd shims are not supported by this read-only, shell-free launcher. Use the manual landmarks assist workflow."
+          : "Codex CLI was not found on PATH. Install Codex or use the manual landmarks assist workflow.",
+      );
+    }
     throw new AvatarWorkflowError(
       "CODEX_VISION_FAILED",
-      "Codex vision generation failed. Verify Codex login status. " + failure.message.slice(0, 750),
+      "Codex vision generation failed; check CLI login/network. " + failure.message.slice(0, 750),
     );
   }
 
-  const resultStat = await stat(rawFile);
-  if (!resultStat.isFile() || resultStat.size > MAX_OUTPUT_BYTES) {
-    throw new AvatarWorkflowError("VISION_RESPONSE_TOO_LARGE", "Codex response must be a JSON file below 200 KB");
-  }
-  const responseText = await readFile(rawFile, "utf8");
+  const responseText = await readVisionOutput(rawFile);
   const rawProposal = parseVisionResponse(responseText, template, task.sourceSha256);
   const normalized = normalizeVisionProposal(rawProposal);
   const parsed = normalized.proposal;

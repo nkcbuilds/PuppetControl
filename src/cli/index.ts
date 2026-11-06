@@ -12,7 +12,7 @@ import { alignAudioWithRhubarb } from "../audio/align.js";
 import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.js";
 import { AvatarWorkflowError, importAvatar, buildAvatar } from "../character/avatar.js";
 import { prepareLandmarkTask, stageLandmarks, acceptLandmarks } from "../character/landmarks.js";
-import { proposeCodexLandmarks } from "../character/vision-codex.js";
+import { proposeCodexLandmarks, codexExecutableForPlatform } from "../character/vision-codex.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -54,7 +54,7 @@ async function run(): Promise<void> {
 
   if (first === "doctor") {
     let codexCliAvailable = false;
-    try { execFileSync("codex", ["--version"], { stdio: "ignore", timeout: 5000 }); codexCliAvailable = true; } catch { /* optional provider */ }
+    try { execFileSync(codexExecutableForPlatform(process.platform), ["--version"], { stdio: "ignore", timeout: 5000 }); codexCliAvailable = true; } catch { /* optional provider */ }
     let ffmpegFound = false;
     try {
       execFileSync("ffmpeg", ["-version"], { stdio: "ignore", timeout: 5000 });

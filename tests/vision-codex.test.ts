@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 import {
   buildCodexVisionArgs,
   createCodexVisionPrompt,
@@ -6,6 +8,8 @@ import {
   assessVisionProposal,
   normalizeVisionProposal,
   launchVisionSubprocess,
+  codexExecutableForPlatform,
+  readVisionOutput,
 } from "../src/character/vision-codex.js";
 
 const hash = "b".repeat(64);
@@ -33,6 +37,18 @@ const proposed = {
 };
 
 describe("optional Codex vision landmark proposals", () => {
+  it("uses a native Windows executable and never invokes cmd.exe for model prompts", () => {
+    expect(codexExecutableForPlatform("win32")).toBe("codex.exe");
+    expect(codexExecutableForPlatform("linux")).toBe("codex");
+    expect(codexExecutableForPlatform("darwin")).toBe("codex");
+  });
+
+  it("reports a stable error if Codex exits without a response file", async () => {
+    const missing = join(process.cwd(), ".cache", "missing-codex-" + randomUUID() + ".json");
+    await expect(readVisionOutput(missing))
+      .rejects.toMatchObject({ code: "VISION_RESPONSE_MISSING" });
+  });
+
   it("closes child stdin so the CLI never stalls requesting extra input", async () => {
     await expect(launchVisionSubprocess(
       process.execPath,

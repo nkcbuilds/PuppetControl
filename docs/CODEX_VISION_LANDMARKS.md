@@ -5,7 +5,7 @@
 
 ## How to run
 
-A Codex CLI logged into a usable account is optional. With an imported avatar project and the pinned Rev2D backend installed:
+A Codex CLI logged into a usable account is optional. On Windows the shell-free integration requires a native `codex.exe` on PATH; an npm-only `codex.cmd` shim is not executed through `cmd.exe` for command-safety reasons. Such installations can still use `character landmarks assist` and run Claude Code/Codex manually. With an imported avatar project and the pinned Rev2D backend installed:
 
 ~~~sh
 npm run build

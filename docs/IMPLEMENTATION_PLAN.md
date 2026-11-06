@@ -77,7 +77,8 @@
 - [x] Revoke existing approval before any --force build mutates Rev2D outputs, and fail closed on stale source/spec/model/texture fingerprints.
 - [x] Eliminate reproduced black edge artifacts caused by alpha-zero warped pixels in H.264: composite frames onto scene background, with a 60-frame before/after comparison.
 - [x] Add bounded per-pixel PNG rest/activity comparison, optional eye/face ROI and unexpected transparent border metrics; expose through the CLI with deterministic tests and actual Hana frame evidence.
-- [ ] Extend image-based QA to multi-frame head/neck discontinuity and visual report/contact-sheet generation; metrics must never auto-approve a rig.
+- [x] Add 2–60 ordered-frame RGB motion triage with optional ROI, expected control samples and intentional cut indices; flag candidate jumps and stalled intervals, verified against a real 13-frame Hana blink cycle.
+- [ ] Generate a first-class visual contact sheet from the CLI and add head/neck seam-specific checks; pixel metrics must never auto-approve a rig.
 - [ ] Wrap Rev2D's existing drawn closed-eye/mouth variants to reduce visible deformation artifacts without writing another mesh engine.
 
 ## Acceptance benchmark

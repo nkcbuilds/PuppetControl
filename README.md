@@ -21,7 +21,7 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - Assisted single-PNG character onboarding through Rev2D landmarks, local rig build, review sheets, unapproved-by-default manifest, and starter scene.
 - Agent-guided landmark proposals: source-hash-bound task, optional **tested** Codex image-based suggestion, isolated geometry validation, visual overlay and explicit review/acceptance that revokes old rig approval.
 - Imported avatar asset provenance: source/spec/model/texture fingerprints checked by scene validation and render; untracked alternate imported pose models are refused. Force rebuild revokes approval before modifying art. Suspicious landmarks generate nonblocking geometry warnings.
-- Local PNG pixel-QA comparison (full frame or an explicit region), reporting RGB activity and newly transparent border pixels; these metrics never auto-approve a rig.
+- Local PNG pixel and ordered-frame QA (full frame or explicit region) reports RGB activity, transparent borders, candidate motion jumps and changed-control stalls; metrics never auto-approve a rig.
 - Agent-readable CLI output, tests and CI.
 
 **Not implemented yet:** fully automatic landmark placement or reliable one-click rigging, AI-generated arbitrary new pose rigs, convincing smooth bridges between unrelated meshes (especially crossed arms), automatic transcription/TTS, captions, B-roll and multiple actors. The arm-raise gesture is genuinely animated, but its artwork is still prototype-quality. Other pose families may require edited hard cuts. The pose manifest is capability metadata; visual poses become usable only after their rig files are generated, validated and inspected.
@@ -45,6 +45,7 @@ npm run demo:gesture-cycle  # Render continuous raise/lower cycles without cuts
 npm run demo:avatar    # Import a freshly rendered flat PNG and create an unapproved rig + review sheets
 # Compare captured PNG frames:
 # node dist/cli/index.js character qa compare outputs/rest.png outputs/closed.png --region 175,220,170,75
+# node dist/cli/index.js character qa sequence outputs/f00.png outputs/f01.png outputs/f02.png --control-values 1,0.5,0
 ~~~
 
 The sample uses Rev2D's own **Hana** rig from the pinned MIT-licensed upstream checkout; generated character rig JSON is not checked into this repository. The derived example video is separately attributed and licensed under the original Rev2D terms.

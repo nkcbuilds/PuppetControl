@@ -20,6 +20,7 @@ import { FirstVideoSceneError } from "../scene/first-video.js";
 import { createFirstVideoFile } from "../scene/create-first-video-file.js";
 import { requestDrawnVariants, statusDrawnVariants, importDrawnVariants } from "../character/drawn-variants.js";
 import { comparePngFiles, parsePixelRegionArgument } from "../character/pixel-qa.js";
+import { comparePngSequence } from "../character/frame-sequence-qa.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -38,6 +39,7 @@ function usage(): never {
     "  puppetctl character variants status <project-dir>\n" +
     "  puppetctl character variants import <project-dir> <variant-id ...> [--experimental-short-fade] --reviewed-art\n" +
     "  puppetctl character qa compare <reference.png> <render.png> [--region x,y,w,h]\n" +
+    "  puppetctl character qa sequence <ordered-frame1.png> <frame2.png> ... [--region x,y,w,h] [--cut-after i,j] [--control-values v1,v2,...]\n" +
     "  puppetctl character landmarks assist <project-dir>\n" +
     "  puppetctl character landmarks propose <project-dir> --provider codex\n" +
     "  puppetctl character landmarks stage <project-dir> --proposal <proposal.json>\n" +
@@ -59,7 +61,8 @@ async function run(): Promise<void> {
   if (first === "--help" || first === "help") {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
-      "Available: doctor, character inspect/import/build/approve, drawn-variant request/status/import, pixel-QA compare, landmark assist/propose/stage/accept, audio align, scene new/validate/plan, single-rig scene preview/render.\n" +\n      "Not yet available: reliable one-click landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
+      "Available: doctor, character inspect/import/build/approve, drawn-variant request/status/import, pixel-QA compare/sequence, landmark assist/propose/stage/accept, audio align, scene new/validate/plan, single-rig scene preview/render.\n" +
+      "Not yet available: reliable one-click landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
     );
     return;
   }
@@ -83,7 +86,7 @@ async function run(): Promise<void> {
       ffmpegAvailable: ffmpegFound,
       rev2dAvailable,
       codexCliAvailable,
-      availableFeatures: ["character-inspect", "scene-create", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(ffmpegFound ? ["png-pixel-qa"] : []), ...(rev2dAvailable ? ["assisted-png-avatar-import", "explicit-visual-approval", "local-drawn-variants", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
+      availableFeatures: ["character-inspect", "scene-create", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(ffmpegFound ? ["png-pixel-qa", "png-sequence-qa"] : []), ...(rev2dAvailable ? ["assisted-png-avatar-import", "explicit-visual-approval", "local-drawn-variants", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
       unavailableFeatures: ["animated-pose-bridges", "automatic-landmark-placement", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
     return;
@@ -167,6 +170,34 @@ async function run(): Promise<void> {
       (flags.length !== 0 && (flags.length !== 2 || flags[0] !== "--region" || !flags[1]))) usage();
     const region = flags.length ? parsePixelRegionArgument(flags[1]!) : undefined;
     print({ valid: true, comparison: await comparePngFiles(reference, candidate, region) });
+    return;
+  }
+
+  if (first === "character" && second === "qa" && third === "sequence") {
+    const args = process.argv.slice(5);
+    const firstOption = args.findIndex((arg) => arg.startsWith("--"));
+    const frameFiles = firstOption < 0 ? args : args.slice(0, firstOption);
+    const flags = firstOption < 0 ? [] : args.slice(firstOption);
+    if (frameFiles.length < 2 || frameFiles.length > 60) usage();
+    let region: ReturnType<typeof parsePixelRegionArgument> | undefined;
+    let cutAfter: number[] = [];
+    let controlValues: number[] | undefined;
+    const seen = new Set<string>();
+    for (let index = 0; index < flags.length; index += 2) {
+      const flag = flags[index];
+      const value = flags[index + 1];
+      if (!flag || !value || seen.has(flag) || !["--region", "--cut-after", "--control-values"].includes(flag)) usage();
+      seen.add(flag);
+      if (flag === "--region") region = parsePixelRegionArgument(value);
+      else if (flag === "--cut-after") {
+        if (!/^\d+(,\d+)*$/.test(value)) usage();
+        cutAfter = value.split(",").map(Number);
+      } else {
+        if (!/^-?(?:\d+(?:\.\d+)?|\.\d+)(,-?(?:\d+(?:\.\d+)?|\.\d+))*$/.test(value)) usage();
+        controlValues = value.split(",").map(Number);
+      }
+    }
+    print({ valid: true, report: await comparePngSequence(frameFiles, { ...(region ? { region } : {}), cutAfter, ...(controlValues ? { controlValues } : {}) }) });
     return;
   }
 

@@ -76,7 +76,9 @@
 - [x] Add conservative geometry triage for low torso pivot/fade, missing/outside-eye iris and shearing head pivot; return nonblocking warnings.
 - [x] Revoke existing approval before any --force build mutates Rev2D outputs, and fail closed on stale source/spec/model/texture fingerprints.
 - [x] Eliminate reproduced black edge artifacts caused by alpha-zero warped pixels in H.264: composite frames onto scene background, with a 60-frame before/after comparison.
-- [x] Implement bounded PNG rest/activity region QA; metrics never prove visual quality.\n- [ ] Add multi-frame QA and a reviewable report; visual review still required.
+- [x] Implement bounded PNG rest/activity region QA; metrics never prove visual quality.
+- [x] Add 2–60 ordered-frame motion QA with optional ROI, control samples and intentional cut indices; verified on a 13-frame Hana blink cycle.
+- [ ] Add a first-class visual contact sheet/head-neck seam report and review multiple drawing styles; metrics must never auto-approve a rig.
 - [x] Wrap local Rev2D drawn eye/mouth variant request/status/import with explicit reviewed-art selection, approval revocation before import, post-import provenance refresh, and new review sheets. A real Hana avatar produced correct edit masks; unchanged fake drawings were rejected.
 - [x] Test and expose an opt-in, validated short eye-sprite fade as a local derived-model experiment. Compare 13 actual Hana blink frames with native, immediate-switch and shortened fades: shorter fades visibly reduce double lashes at sampled midpoints, but introduce faster pose changes; never auto-approve.
 - [ ] Produce and visually approve high-quality closed/half eye and mouth artwork; demonstrate seamless real rendered transitions across full blink playback and multiple character styles. The local proof drawing stays unapproved.

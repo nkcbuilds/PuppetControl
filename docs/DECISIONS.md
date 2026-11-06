@@ -51,3 +51,10 @@ An assisted avatar controls a head, eyes and mouth; it does not automatically ad
 **Status:** experimental, tested against pinned Hana avatar (2026-11-06).
 
 Rather than silently using any agent-produced JSON as an approved rig, PuppetControl generates an image-aware task with a source SHA-256 and constrains proposals to landmark geometry. Each proposal is built into an isolated staging folder and Rev2D validates it before producing an overlay. Approval requires the returned candidate path and an explicit acknowledgement that the overlay was inspected; stale source/spec/candidate hashes and changed protected fields are rejected. Acceptance backs up avatar.json and revokes old character approvals before changing the specification. The new rig must be rebuilt and visually reviewed separately. A built-in CV detector or guaranteed visual-QA classifier is **not** part of this milestone.
+
+## ADR-011 — Optional image-vision proposals via Codex CLI
+**Status:** experimental, demonstrated on the 512×640 Hana PNG (2026-11-06).
+
+A user can explicitly invoke their authenticated Codex CLI with the original PNG plus coordinate grid. The Codex process receives a fixed structured landmark task, runs read-only and is not allowed to approve/modify the live avatar. Proposals are parsed as untrusted JSON, image-hash checked, normalized only for a few unambiguous schema representation mistakes, and staged through Rev2D. Provider use is optional and sends the art to the user's configured online model, potentially consuming quota.
+
+The real-image tests proved source→Codex→staged overlay and an independently rendered candidate, but also exposed poor eyelid behavior and unreliable gaze when iris landmarks are absent. Schema validation alone cannot establish quality. The existing explicit visual-approval gate remains mandatory; no automatic rig acceptance or universal landmark-accuracy claim is authorized.

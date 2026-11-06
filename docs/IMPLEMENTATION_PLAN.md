@@ -71,7 +71,8 @@
 - [ ] Generate a new pose once; use same cached asset in second project.
 - [x] Support manual landmark repair, explicit rebuild, review sheets, and approval gating; generated rigs default to unapproved. Partial stage regeneration remains future work.
 - [x] Add image-hash-bound Claude/Codex landmark tasks, isolated proposal validation/overlay review, stale-candidate detection and explicit acceptance that revokes prior approvals.
-- [ ] Automatically infer landmarks from images using an evaluated optional vision model; the new task workflow only delegates placement to a vision-capable agent.
+- [x] Implement optional Codex image-to-landmark proposal adapter; run two real-image Hana trials, normalize limited schema formatting errors, and build/inspect generated candidate review sheets.
+- [ ] Reach robust fully automatic landmark inference across diverse supplied illustrations and remove visible eye/head deformation defects; no reliable one-click rigging claim yet.
 - [ ] Add practical motion visual-QA heuristics and human-readable reports; geometry validation and manual review remain separate.
 
 ## Acceptance benchmark

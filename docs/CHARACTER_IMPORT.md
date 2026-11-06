@@ -75,7 +75,7 @@ node dist/cli/index.js scene validate avatars/portrait/preview-scene.json
 node dist/cli/index.js scene render avatars/portrait/preview-scene.json --out outputs/portrait.mp4
 ~~~
 
-Scene validation also checks avatar-build.json against source.png, avatar.json, the built model and all generated textures. Changing any of them requires a new build and renewed review; stale files fail with AVATAR_ASSETS_STALE. Before approval, the scene intentionally fails with DEFAULT_POSE_NOT_APPROVED. The built model begins with one body pose family (neutral), not automatic pointing or crossed-arms artwork.
+Scene validation also checks avatar-build.json against source.png, avatar.json, the built model and all generated textures. Changing any of them requires a new build and renewed review; stale files fail with AVATAR_ASSETS_STALE. Before approval, the scene intentionally fails with DEFAULT_POSE_NOT_APPROVED. The built model begins with one body pose family (neutral), not automatic pointing or crossed-arms artwork. Its provenance record covers that primary rig only: adding a different pose model to this imported actor is rejected until separate pose-model fingerprints are supported. Manually authored multi-pose characters remain available through the existing explicit rig workflow.
 
 ## Reproducible built-in demonstration
 

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
   createAvatarBuildRecord, writeAvatarBuildRecord,
-  verifyAvatarBuildRecord, revokeAvatarApprovalBeforeBuild,
+  verifyAvatarBuildRecord, revokeAvatarApprovalBeforeBuild, checkAvatarPoseCoverage,
 } from "../src/character/provenance.js";
 import { createImportedCharacter } from "../src/character/avatar.js";
 import { loadAndValidateScene } from "../src/scene/load.js";
@@ -75,6 +75,30 @@ describe("imported avatar build provenance", () => {
       scene, character, join(dir, "character.json"), "test",
       join(dir, "frames"), join(dir, "scene.json"),
     )).rejects.toMatchObject({ code: "AVATAR_ASSETS_STALE" });
+  });
+
+  it("does not silently approve separately authored pose rigs outside the avatar build record", async () => {
+    const { dir } = await fixture();
+    const path = join(dir, "character.json");
+    const raw = JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
+    const poses = raw.poseFamilies as Array<Record<string, unknown>>;
+    poses.push({
+      name: "crossed", rigId: "other", modelPath: "rigs/crossed.r2d.json",
+      head: "shared", approved: true,
+    });
+    const character = characterSchema.parse(raw);
+    expect(checkAvatarPoseCoverage(character))
+      .toMatchObject({ valid: false, code: "AVATAR_POSE_PROVENANCE_MISSING" });
+    await writeFile(path, JSON.stringify(character));
+    const result = await loadAndValidateScene(join(dir, "scene.json"));
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.diagnostics.some((d) => d.code === "AVATAR_POSE_PROVENANCE_MISSING")).toBe(true);
+    }
+    const scene = sceneSchema.parse(JSON.parse(await readFile(join(dir, "scene.json"), "utf8")));
+    await expect(renderRev2DFrames(
+      scene, character, path, "test", join(dir, "unverified-frames"), join(dir, "scene.json"),
+    )).rejects.toMatchObject({ code: "AVATAR_POSE_PROVENANCE_MISSING" });
   });
 
   it("refuses a missing build record and manipulated texture path", async () => {

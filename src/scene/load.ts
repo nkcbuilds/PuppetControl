@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { characterSchema, sceneSchema, type Character, type Scene } from "./schemas.js";
 import { validateSceneCapabilities, type Diagnostic, type SceneValidation } from "./validate.js";
-import { verifyAvatarBuildRecord } from "../character/provenance.js";
+import { verifyAvatarBuildRecord, checkAvatarPoseCoverage } from "../character/provenance.js";
 
 async function readJson(path: string): Promise<unknown> {
   const text = await readFile(path, "utf8");
@@ -54,6 +54,14 @@ export async function loadAndValidateScene(filePath: string): Promise<LoadResult
         }
       } else {
         if (character.data.provenance) {
+          const coverage = checkAvatarPoseCoverage(character.data);
+          if (!coverage.valid) {
+            diagnostics.push({
+              severity: "error", code: coverage.code,
+              path: "actors." + actor.id + ".provenance", message: coverage.message,
+            });
+            continue;
+          }
           const expectedModel = character.data.render?.modelPath;
           const verified = expectedModel
             ? await verifyAvatarBuildRecord(characterFile, expectedModel)

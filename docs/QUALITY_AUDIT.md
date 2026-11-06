@@ -13,7 +13,7 @@
 5. Build generates pose sheets. The user/agent inspects the actual eyelids, face, mouth, neck, hair, clothing and seams in several extreme parameter states.
 6. PuppetControl compiles semantic scenes to existing rig parameters and Rhubarb-derived visemes; incompatible body-pose families require an explicit edit/cut, not an unsafe mesh blend.
 7. The renderer produces deterministic PNG frames and H.264 video with optional AAC voice. MP4 cannot preserve alpha; intermediate frames are now composited onto the configured scene background (default #f0eaf4) rather than letting transparent warped margins encode as black.
-8. New integrity protections record SHA-256 hashes for source PNG, accepted landmarks, model and generated textures. Scene preflight rejects changed/missing assets, and force rebuilding revokes prior approval before model/texture mutation.
+8. New integrity protections record SHA-256 hashes for source PNG, accepted landmarks, model and generated textures. Scene preflight rejects changed/missing assets and untracked alternate pose models, while force rebuilding revokes prior approval before model/texture mutation.
 
 ## 2. What three Hana experiments actually demonstrate
 
@@ -38,7 +38,7 @@ The new geometry triage flags both AI body-pivot/bust-fade errors, plus missing 
 | Priority | Risk | Current treatment |
 | --- | --- | --- |
 | P1 | A crashed force rebuild can overwrite model files while retaining an old approved manifest | Fixed: revoke approval *before* calling the engine and use unique temporary manifest paths |
-| P1 | Manual edits to source, landmark file, model or texture invalidate the earlier review, but manifests can still say approved | Fixed for new imported actors: build fingerprints checked by scene preflight |
+| P1 | Manual edits to source, landmark file, model or texture invalidate the earlier review, but manifests can still say approved | Fixed for new imported actors: build fingerprints checked by scene preflight and direct rendering; additional untracked pose models are rejected |
 | P1 | Out-of-position body pivot/fade and absent eye iris pass structural validation | Geometry triage warns; review still required |
 | P1 | Transparent mesh-edge pixels were encoded as black border lines by H.264 | Fixed for the reproduced Hana scene: Rev2D now composites onto the scene background; black-border frames decreased from 29/60 to 0/60 |
 | P1 | Eyelid closures can smear lashes or reveal duplicate outlines | Not fixed: use reviewed drawn eye variants or repair the upstream eye matte |

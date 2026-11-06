@@ -10,7 +10,7 @@ import { buildFfmpegArgs, type FfmpegAudioInput } from "../audio/ffmpeg.js";
 import type { VideoOutput } from "../video/output.js";
 import type { SceneEvent } from "../scene/schemas.js";
 import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.js";
-import { verifyAvatarBuildRecord } from "../character/provenance.js";
+import { verifyAvatarBuildRecord, checkAvatarPoseCoverage } from "../character/provenance.js";
 import { pinnedRev2D } from "../character/avatar.js";
 
 const execFileAsync = promisify(execFile);
@@ -243,6 +243,8 @@ export async function renderRev2DFrames(
     throw new PreviewUnsupportedError("MULTI_ACTOR_UNSUPPORTED", "Renderer currently supports one actor.");
   }
   if (character.provenance) {
+    const coverage = checkAvatarPoseCoverage(character);
+    if (!coverage.valid) throw new PreviewUnsupportedError(coverage.code, coverage.message);
     const integrity = await verifyAvatarBuildRecord(characterPath, character.render.modelPath);
     if (!integrity.valid) throw new PreviewUnsupportedError(integrity.code, integrity.message);
     await pinnedRev2D(process.cwd());

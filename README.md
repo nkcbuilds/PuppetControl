@@ -20,7 +20,7 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - Local Rhubarb speech alignment CLI and eased lip-sync viseme curves driving the mouth.
 - Assisted single-PNG character onboarding through Rev2D landmarks, local rig build, review sheets, unapproved-by-default manifest, and starter scene.
 - Agent-guided landmark proposals: source-hash-bound task, optional **tested** Codex image-based suggestion, isolated geometry validation, visual overlay and explicit review/acceptance that revokes old rig approval.
-- Imported avatar asset provenance: source/spec/model/texture fingerprints checked by scene validation; force rebuild revokes approval before modifying art. Suspicious landmarks generate nonblocking geometry warnings.
+- Imported avatar asset provenance: source/spec/model/texture fingerprints checked by scene validation and render; untracked alternate imported pose models are refused. Force rebuild revokes approval before modifying art. Suspicious landmarks generate nonblocking geometry warnings.
 - Agent-readable CLI output, tests and CI.
 
 **Not implemented yet:** fully automatic landmark placement or reliable one-click rigging, AI-generated arbitrary new pose rigs, convincing smooth bridges between unrelated meshes (especially crossed arms), automatic transcription/TTS, captions, B-roll and multiple actors. The arm-raise gesture is genuinely animated, but its artwork is still prototype-quality. Other pose families may require edited hard cuts. The pose manifest is capability metadata; visual poses become usable only after their rig files are generated, validated and inspected.

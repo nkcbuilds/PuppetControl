@@ -14,7 +14,7 @@ import { readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { checkedPath, PINNED_REV2D_SHA, AvatarWorkflowError } from "./avatar.js";
-import { characterSchema } from "../scene/schemas.js";
+import { characterSchema, type Character } from "../scene/schemas.js";
 
 export const AVATAR_BUILD_RECORD = "avatar-build.json";
 
@@ -31,6 +31,30 @@ export const avatarBuildRecordSchema = z.strictObject({
 });
 
 export type AvatarBuildRecord = z.infer<typeof avatarBuildRecordSchema>;
+
+/**
+ * Current source-image build records cover exactly one generated Rev2D model.
+ * Until pose-family fingerprints exist, do not pretend separately authored rigs
+ * were covered by the original avatar's approval or integrity record.
+ */
+export function checkAvatarPoseCoverage(
+  character: Character,
+): { valid: true } | { valid: false; code: string; message: string } {
+  if (!character.provenance) return { valid: true };
+  const primary = character.render?.modelPath;
+  if (!primary) {
+    return { valid: false, code: "AVATAR_BUILD_RECORD_INVALID", message: "Imported actor is missing its primary model path" };
+  }
+  for (const pose of character.poseFamilies) {
+    if (pose.modelPath && pose.modelPath !== primary) {
+      return {
+        valid: false, code: "AVATAR_POSE_PROVENANCE_MISSING",
+        message: "Imported pose " + pose.name + " uses an untracked rig. Separate pose models require their own build fingerprints.",
+      };
+    }
+  }
+  return { valid: true };
+}
 
 async function fingerprint(dir: string, filename: string): Promise<{path:string; sha256:string}> {
   const full = await checkedPath(dir, join(dir, filename));

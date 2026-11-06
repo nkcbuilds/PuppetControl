@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, readFile, writeFile, mkdir, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdtemp, readFile, writeFile, mkdir, rm, symlink, unlink, truncate } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import {
   createAvatarBuildRecord, writeAvatarBuildRecord,
@@ -114,6 +115,46 @@ describe("imported avatar build provenance", () => {
     await rm(path);
     expect(await verifyAvatarBuildRecord(join(dir, "character.json"), "test.r2d.json"))
       .toMatchObject({ valid: false, code: "AVATAR_BUILD_RECORD_MISSING_OR_INVALID" });
+  });
+
+  it("works through symlinked project paths without leaving the project boundary", async () => {
+    const { dir } = await fixture();
+    const link = join(dirname(dir), "avatar-alias-" + randomUUID());
+    await symlink(dir, link, process.platform === "win32" ? "junction" : "dir");
+    try {
+      const record = await createAvatarBuildRecord(link, "test.r2d.json");
+      await writeAvatarBuildRecord(link, record);
+      expect(await verifyAvatarBuildRecord(join(link, "character.json"), "test.r2d.json"))
+        .toEqual({ valid: true });
+    } finally {
+      await unlink(link);
+    }
+  });
+
+  it("bounds untrusted model size before loading its JSON", async () => {
+    const { dir } = await fixture();
+    await truncate(join(dir, "test.r2d.json"), 20_000_001);
+    await expect(createAvatarBuildRecord(dir, "test.r2d.json"))
+      .rejects.toMatchObject({ code: "REV2D_MODEL_INVALID" });
+  });
+
+  it("canonicalizes supported relative texture paths and rejects traversal", async () => {
+    const { dir } = await fixture();
+    const path = join(dir, "test.r2d.json");
+    const input = JSON.parse(await readFile(path, "utf8")) as {
+      textures: Array<{path: string}>;
+    };
+    input.textures[0]!.path = "./textures/base.png";
+    await writeFile(path, JSON.stringify(input));
+    const record = await createAvatarBuildRecord(dir, "test.r2d.json");
+    expect(record.textures[0]?.path).toBe("textures/base.png");
+    await writeAvatarBuildRecord(dir, record);
+    expect(await verifyAvatarBuildRecord(join(dir, "character.json"), "test.r2d.json"))
+      .toEqual({ valid: true });
+    input.textures[0]!.path = "../source.png";
+    await writeFile(path, JSON.stringify(input));
+    await expect(createAvatarBuildRecord(dir, "test.r2d.json"))
+      .rejects.toMatchObject({ code: "AVATAR_TEXTURE_LIST_INVALID" });
   });
 
   it("revokes approval before a potentially destructive rebuild and stays idempotent", async () => {

@@ -10,7 +10,7 @@
  */
 import { createHash, randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { readFile, realpath, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { checkedPath, PINNED_REV2D_SHA, AvatarWorkflowError } from "./avatar.js";
@@ -64,19 +64,34 @@ async function fingerprint(dir: string, filename: string): Promise<{path:string;
   return { path: filename.replaceAll("\\", "/"), sha256: hash.digest("hex") };
 }
 
+function canonicalTexturePath(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new AvatarWorkflowError("AVATAR_TEXTURE_LIST_INVALID", "Generated model has a missing texture path");
+  }
+  // Rev2D permits a harmless './textures/...' spelling. The record always uses
+  // canonical project-relative paths so validation and generation agree.
+  const path = value.startsWith("./") ? value.slice(2) : value;
+  if (!path.startsWith("textures/") || path.includes("\\") || path.includes(":") ||
+      path.split("/").some((segment) => !segment || segment === "." || segment === "..")) {
+    throw new AvatarWorkflowError("AVATAR_TEXTURE_LIST_INVALID", "Invalid generated texture path: " + value);
+  }
+  return path;
+}
+
 async function safeModelAndTextures(dir: string, modelFile: string) {
+  const fullModel = await checkedPath(dir, join(dir, modelFile));
+  const modelStats = await stat(fullModel);
+  if (!modelStats.isFile() || modelStats.size > 20_000_000) {
+    throw new AvatarWorkflowError("REV2D_MODEL_INVALID", "Generated avatar model is not a file or exceeds 20 MB");
+  }
   const model = await fingerprint(dir, modelFile);
-  const raw = JSON.parse(await readFile(join(dir, modelFile), "utf8")) as {
-    textures?: Array<{ path?: unknown }>;
+  const raw = JSON.parse(await readFile(fullModel, "utf8")) as {
+    textures?: Array<{ path?: unknown } | null>;
   };
   if (!Array.isArray(raw.textures) || !raw.textures.length || raw.textures.length > 1024) {
     throw new AvatarWorkflowError("AVATAR_TEXTURE_LIST_INVALID", "Generated model has no valid texture list");
   }
-  const paths = raw.textures.map((t) => t.path);
-  if (paths.some((path) => typeof path !== "string" || !path.trim())) {
-    throw new AvatarWorkflowError("AVATAR_TEXTURE_LIST_INVALID", "Generated model has a missing texture path");
-  }
-  const unique = [...new Set(paths as string[])].sort();
+  const unique = [...new Set(raw.textures.map((texture) => canonicalTexturePath(texture?.path)))].sort();
   const textures: Array<{path: string; sha256: string}> = [];
   for (const path of unique) textures.push(await fingerprint(dir, path));
   return { model, textures };
@@ -87,10 +102,11 @@ async function safeModelAndTextures(dir: string, modelFile: string) {
  * generation. Never mark an actor approved as part of this operation.
  */
 export async function createAvatarBuildRecord(dir: string, modelFile: string): Promise<AvatarBuildRecord> {
+  const canonicalDir = await realpath(dir);
   const [source, spec, assets] = await Promise.all([
-    fingerprint(dir, "source.png"),
-    fingerprint(dir, "avatar.json"),
-    safeModelAndTextures(dir, modelFile),
+    fingerprint(canonicalDir, "source.png"),
+    fingerprint(canonicalDir, "avatar.json"),
+    safeModelAndTextures(canonicalDir, modelFile),
   ]);
   return avatarBuildRecordSchema.parse({
     version: 1,
@@ -104,8 +120,9 @@ export async function createAvatarBuildRecord(dir: string, modelFile: string): P
 }
 
 export async function writeAvatarBuildRecord(dir: string, record: AvatarBuildRecord): Promise<void> {
-  const file = await checkedPath(dir, join(dir, AVATAR_BUILD_RECORD));
-  const tmp = await checkedPath(dir, file + ".next-" + randomUUID());
+  const canonicalDir = await realpath(dir);
+  const file = await checkedPath(canonicalDir, join(canonicalDir, AVATAR_BUILD_RECORD));
+  const tmp = await checkedPath(canonicalDir, file + ".next-" + randomUUID());
   try {
     await writeFile(tmp, JSON.stringify(record, null, 2) + "\n", { flag: "wx" });
     await rename(tmp, file);
@@ -121,8 +138,8 @@ export async function writeAvatarBuildRecord(dir: string, record: AvatarBuildRec
 export async function verifyAvatarBuildRecord(
   characterPath: string, expectedModelPath: string,
 ): Promise<{ valid: true } | { valid: false; code: string; message: string }> {
-  const dir = dirname(characterPath);
   try {
+    const dir = await realpath(dirname(characterPath));
     const path = await checkedPath(dir, join(dir, AVATAR_BUILD_RECORD));
     const raw = await readFile(path, "utf8");
     const record = avatarBuildRecordSchema.parse(JSON.parse(raw) as unknown);
@@ -138,7 +155,7 @@ export async function verifyAvatarBuildRecord(
       if (reference.path.includes("\\") ||
           reference.path.startsWith("/") ||
           reference.path.includes(":") ||
-          reference.path.split("/").some((segment) => segment === ".." || segment === ".")) {
+          reference.path.split("/").some((segment) => !segment || segment === ".." || segment === ".")) {
         return { valid: false, code: "AVATAR_BUILD_RECORD_INVALID", message: "Invalid asset reference in provenance: " + reference.path };
       }
     }

@@ -42,7 +42,7 @@ Fix reported geometry issues before building. Review enlarged eye and mouth crop
 node dist/cli/index.js character build avatars/portrait
 ~~~
 
-This validates landmark geometry, builds a Rev2D model, renders review sheets and writes a PuppetControl manifest/preview scaffold.
+This validates landmark geometry, builds a Rev2D model, renders review sheets and writes a PuppetControl manifest/preview scaffold. When rendering an MP4, transparent warp margins are flattened onto the scene's output background (default `#f0eaf4`) rather than appearing black. Set `scene.output.background` to match the illustration when appropriate.
 
 | Output | Purpose |
 | --- | --- |
@@ -53,15 +53,16 @@ This validates landmark geometry, builds a Rev2D model, renders review sheets an
 | review/mouth.png | Mouth shapes / visemes |
 | review/summary.json | Detailed pose data |
 | character.json | PuppetControl manifest, with neutral pose **unapproved** |
+| avatar-build.json | SHA-256 fingerprints of source art, landmarks, rig and generated textures. Scene validation rejects stale/missing assets |
 | preview-scene.json | Agent-editable four-second scene |
 
-The result has status "review-required". If landmarks require correction after building, edit avatar.json, then run:
+The result has status "review-required" and may include geometryWarnings for suspect neck/body/eye landmarks. These warnings guide inspection; they are not automatic quality grades. If landmarks require correction after building, edit avatar.json, then run:
 
 ~~~sh
 node dist/cli/index.js character build avatars/portrait --force
 ~~~
 
-This explicitly regenerates the output manifest and preview scene, resetting approval. It **overwrites edits to those two generated files** but not source.png or avatar.json. Save important manifest changes elsewhere before using --force.
+This revokes prior approval **before** the rendering backend touches the rig, and regenerates the manifest and preview scene. A failed or interrupted rebuild leaves the old character unapproved. It **overwrites edits to those two generated files** but not source.png or avatar.json. Save important manifest changes elsewhere before using --force.
 
 ## Step 4 — Approve only after visual QA
 
@@ -74,7 +75,7 @@ node dist/cli/index.js scene validate avatars/portrait/preview-scene.json
 node dist/cli/index.js scene render avatars/portrait/preview-scene.json --out outputs/portrait.mp4
 ~~~
 
-Before approval, the scene intentionally fails with DEFAULT_POSE_NOT_APPROVED. The built model begins with one body pose family (neutral), not automatic pointing or crossed-arms artwork.
+Scene validation also checks avatar-build.json against source.png, avatar.json, the built model and all generated textures. Changing any of them requires a new build and renewed review; stale files fail with AVATAR_ASSETS_STALE. Before approval, the scene intentionally fails with DEFAULT_POSE_NOT_APPROVED. The built model begins with one body pose family (neutral), not automatic pointing or crossed-arms artwork. Its provenance record covers that primary rig only: adding a different pose model to this imported actor is rejected until separate pose-model fingerprints are supported. Manually authored multi-pose characters remain available through the existing explicit rig workflow.
 
 ## Reproducible built-in demonstration
 

@@ -1,9 +1,11 @@
 import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
-import { readFile, realpath, stat, lstat, mkdir, writeFile, rename } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { readFile, realpath, stat, lstat, mkdir, writeFile, rename, unlink } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { characterSchema, sceneSchema, type Character, type Scene } from "../scene/schemas.js";
+import { AVATAR_BUILD_RECORD, createAvatarBuildRecord, writeAvatarBuildRecord, revokeAvatarApprovalBeforeBuild } from "./provenance.js";
+import { assessAvatarGeometry } from "./geometry-quality.js";
 
 const execFileAsync = promisify(execFile);
 export const PINNED_REV2D_SHA = "f144581cdf1f12d781379c4df90d262b8c2dfa3d";
@@ -93,6 +95,7 @@ export function createImportedCharacter(id: string, model: Rev2DModelParameters)
 
   const manifest = {
     schemaVersion: 1,
+    provenance: { file: AVATAR_BUILD_RECORD },
     id,
     defaultPose: "neutral",
     poseFamilies: [{ name: "neutral", rigId: id + "-avatar", modelPath: id + ".r2d.json", head: "shared", approved: false }],
@@ -203,6 +206,8 @@ export async function importAvatar(inputFile: string, outputDir: string, id: str
 
 export async function buildAvatar(projectDir: string, overwrite = false, root = process.cwd()) {
   const project = await checkedPath(root, projectDir);
+  const manifestPath = await checkedPath(root, join(project, "character.json"));
+  if (overwrite) await revokeAvatarApprovalBeforeBuild(manifestPath);
   const specPath = await checkedPath(root, join(project, "avatar.json"));
   const spec = JSON.parse(await readFile(specPath, "utf8")) as {
     format?: unknown; name?: unknown; image?: { file?: unknown };
@@ -212,7 +217,6 @@ export async function buildAvatar(projectDir: string, overwrite = false, root = 
     throw new AvatarWorkflowError("AVATAR_SPEC_INVALID", "Invalid Rev2D avatar.json; run character import first");
   }
   const name = spec.name;
-  const manifestPath = await checkedPath(root, join(project, "character.json"));
   const previewPath = await checkedPath(root, join(project, "preview-scene.json"));
   if (!overwrite) {
     try {
@@ -235,20 +239,32 @@ export async function buildAvatar(projectDir: string, overwrite = false, root = 
   const model = JSON.parse(await readFile(modelPath, "utf8")) as Rev2DModelParameters;
   const character = createImportedCharacter(name, model);
   if (!model.meta) throw new AvatarWorkflowError("AVATAR_MODEL_METADATA_MISSING", "Built model has no native dimensions");
+  const provenance = await createAvatarBuildRecord(project, name + ".r2d.json");
+  await writeAvatarBuildRecord(project, provenance);
   const previewScene = createImportedPreviewScene(name, model.meta);
   const content = JSON.stringify(character, null, 2) + "\n";
   const previewContent = JSON.stringify(previewScene, null, 2) + "\n";
   if (overwrite) {
-    const temp = manifestPath + ".tmp-" + process.pid;
-    await writeFile(temp, content, { encoding: "utf8", flag: "wx" });
-    await rename(temp, manifestPath);
-    await writeFile(previewPath, previewContent, { encoding: "utf8" });
+    // Unique temporary files allow safe retries after interrupted builds.
+    // The old approval was already revoked before Rev2D touched any assets.
+    const manifestTemp = manifestPath + ".next-" + randomUUID();
+    const previewTemp = previewPath + ".next-" + randomUUID();
+    try {
+      await writeFile(manifestTemp, content, { encoding: "utf8", flag: "wx" });
+      await writeFile(previewTemp, previewContent, { encoding: "utf8", flag: "wx" });
+      await rename(previewTemp, previewPath);
+      await rename(manifestTemp, manifestPath);
+    } finally {
+      await unlink(manifestTemp).catch(() => undefined);
+      await unlink(previewTemp).catch(() => undefined);
+    }
   } else {
     await writeFile(previewPath, previewContent, { encoding: "utf8", flag: "wx" });
     await writeFile(manifestPath, content, { encoding: "utf8", flag: "wx" });
   }
   return {
     valid: true, status: "review-required", approved: false, characterId: name,
+    geometryWarnings: assessAvatarGeometry(spec),
     characterPath: manifestPath, modelPath, previewScenePath: previewPath,
     review: {
       poses: join(project, "review", "poses.png"),

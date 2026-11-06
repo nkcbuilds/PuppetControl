@@ -13,6 +13,7 @@ import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.
 import { AvatarWorkflowError, importAvatar, buildAvatar } from "../character/avatar.js";
 import { prepareLandmarkTask, stageLandmarks, acceptLandmarks } from "../character/landmarks.js";
 import { proposeCodexLandmarks, codexExecutableForPlatform } from "../character/vision-codex.js";
+import { verifyAvatarBuildRecord } from "../character/provenance.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -153,8 +154,19 @@ async function run(): Promise<void> {
       process.exitCode = 1;
       return;
     }
+    if (parsed.data.provenance) {
+      const verified = parsed.data.render?.modelPath
+        ? await verifyAvatarBuildRecord(resolve(third), parsed.data.render.modelPath)
+        : { valid: false as const, code: "AVATAR_BUILD_RECORD_INVALID", message: "Missing model path" };
+      if (!verified.valid) {
+        print({ valid: false, code: verified.code, message: verified.message });
+        process.exitCode = 1;
+        return;
+      }
+    }
     print({
       valid: true,
+      assetIntegrity: parsed.data.provenance ? "verified" : "not-applicable",
       id: parsed.data.id,
       defaultPose: parsed.data.defaultPose,
       poseFamilies: parsed.data.poseFamilies,

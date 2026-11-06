@@ -30,6 +30,8 @@ export const transitionSchema = z.discriminatedUnion("kind", [
 
 export const characterSchema = z.strictObject({
   schemaVersion: z.literal(1),
+  /** Imported-image actors bind their approved rig to the exact built artwork and landmark bytes. */
+  provenance: z.strictObject({ file: z.literal("avatar-build.json") }).optional(),
   render: z.strictObject({
     backend: z.literal("rev2d"),
     modelPath: z.string().trim().min(1),

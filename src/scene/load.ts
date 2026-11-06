@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { characterSchema, sceneSchema, type Character, type Scene } from "./schemas.js";
 import { validateSceneCapabilities, type Diagnostic, type SceneValidation } from "./validate.js";
+import { verifyAvatarBuildRecord, checkAvatarPoseCoverage } from "../character/provenance.js";
 
 async function readJson(path: string): Promise<unknown> {
   const text = await readFile(path, "utf8");
@@ -52,6 +53,27 @@ export async function loadAndValidateScene(filePath: string): Promise<LoadResult
           });
         }
       } else {
+        if (character.data.provenance) {
+          const coverage = checkAvatarPoseCoverage(character.data);
+          if (!coverage.valid) {
+            diagnostics.push({
+              severity: "error", code: coverage.code,
+              path: "actors." + actor.id + ".provenance", message: coverage.message,
+            });
+            continue;
+          }
+          const expectedModel = character.data.render?.modelPath;
+          const verified = expectedModel
+            ? await verifyAvatarBuildRecord(characterFile, expectedModel)
+            : { valid: false as const, code: "AVATAR_BUILD_RECORD_INVALID", message: "Imported character requires a configured model" };
+          if (!verified.valid) {
+            diagnostics.push({
+              severity: "error", code: verified.code,
+              path: "actors." + actor.id + ".provenance", message: verified.message,
+            });
+            continue;
+          }
+        }
         characters.set(actor.id, character.data);
       }
     } catch (error) {

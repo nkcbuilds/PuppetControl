@@ -62,7 +62,7 @@ node dist/cli/index.js character landmarks accept avatars/portrait --candidate <
 node dist/cli/index.js character build avatars/portrait --force
 ~~~
 
-Acceptance checks source/spec/candidate hashes, verifies protected fields are unchanged, re-validates the candidate and requires an overlay. Stale candidates are rejected. The old avatar spec is backed up as avatar.json.before-<hash>.bak.
+Acceptance checks source/spec/candidate hashes, verifies protected fields are unchanged, re-validates the candidate and requires an overlay. Stale candidates are rejected. The old avatar spec is backed up as avatar.json.before-<hash>.bak. Retrying acceptance reuses an existing backup only when its bytes match the original; conflicting backups abort without revoking approval. Temporary filenames are unique, so an interrupted earlier attempt does not block safe retries.
 
 If character.json already exists, **all pose families are marked approved:false before the landmark file is replaced**. A newly built model is also unapproved. Review eyes.png, mouth.png, turn.png and poses.png after the rebuild. Human or agent visual review remains necessary before manually approving a pose.
 

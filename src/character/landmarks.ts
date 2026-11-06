@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
-import { copyFile, mkdir, readFile, stat, writeFile, rename } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { copyFile, mkdir, readFile, stat, writeFile, rename, unlink } from "node:fs/promises";
 import { join, resolve, relative, sep } from "node:path";
 import { characterSchema } from "../scene/schemas.js";
 import { AvatarWorkflowError, checkedPath, pinnedRev2D, runRev2D, parsePngSize } from "./avatar.js";
@@ -48,6 +48,7 @@ async function projectInfo(input: string, root: string): Promise<Project> {
   };
 }
 
+/** Preserve protected actor metadata while applying the agent-proposed geometric groups. */
 export function composeCandidate(
   sourceSpec: Record<string, unknown>, proposal: unknown, expectedHash: string,
 ): Record<string, unknown> {
@@ -131,6 +132,7 @@ async function createTaskIfMissing(path: string, content: string, hash?: string)
   }
 }
 
+/** Create an idempotent, image-hash-bound visual annotation task for Claude/Codex. */
 export async function prepareLandmarkTask(input: string, root = process.cwd()) {
   const project = await projectInfo(input, root);
   const instructions = await checkedPath(root, join(project.dir, "work", "landmark-agent-task.md"));
@@ -187,6 +189,7 @@ interface CandidateMetadata {
   candidateHash: string;
 }
 
+/** Validate an untrusted proposal in an isolated folder and produce an overlay. */
 export async function stageLandmarks(input: string, proposalFile: string, root = process.cwd()) {
   const project = await projectInfo(input, root);
   const proposalPath = await checkedPath(root, proposalFile);
@@ -231,6 +234,31 @@ export async function stageLandmarks(input: string, proposalFile: string, root =
   };
 }
 
+/** A pre-existing backup is reusable only if it matches the exact original bytes. */
+export async function preserveAvatarBackup(path: string, source: Buffer): Promise<void> {
+  try {
+    await writeFile(path, source, { flag: "wx" });
+  } catch (error) {
+    if (!(error instanceof Error) || !("code" in error) || error.code !== "EEXIST") throw error;
+    const current = await readFile(path);
+    if (!current.equals(source)) {
+      throw new AvatarWorkflowError("BACKUP_CONFLICT", "Existing avatar backup differs from the current source specification");
+    }
+  }
+}
+
+/** Replace one JSON file using a unique same-directory temp path; stale temp files do not block retries. */
+async function replaceJsonFile(path: string, content: string | Buffer): Promise<void> {
+  const tmp = path + ".next-" + randomUUID();
+  try {
+    await writeFile(tmp, content, { flag: "wx" });
+    await rename(tmp, path);
+  } finally {
+    await unlink(tmp).catch(() => undefined);
+  }
+}
+
+/** Revalidate a reviewed candidate, back up the original, then revoke approval and accept. */
 export async function acceptLandmarks(
   input: string, candidatePath: string, reviewed: boolean, root = process.cwd(),
 ) {
@@ -264,26 +292,25 @@ export async function acceptLandmarks(
   const upstream = await pinnedRev2D(root);
   await runRev2D(upstream, ["avatar", "validate", dir]);
 
-  // Revoke approval before changing the spec. An interrupted update fails closed.
+  // Back up BEFORE invalidating the old rig. An incompatible existing backup
+  // must fail without changing the character's current approval.
+  const backup = await checkedPath(root, join(project.dir, "avatar.json.before-" + project.specHash.slice(0, 16) + ".bak"));
+  await preserveAvatarBackup(backup, project.specBytes);
+
+  // Revoke approval before changing the spec. Interrupted runs fail closed.
   const manifestPath = await checkedPath(root, join(project.dir, "character.json"));
   let approvalRevoked = false;
   try {
     const old = JSON.parse(await readFile(manifestPath, "utf8")) as unknown;
     const manifest = characterSchema.parse(old);
     for (const pose of manifest.poseFamilies) pose.approved = false;
-    const tmp = join(project.dir, "character.json.next-" + metadata.candidateHash.slice(0, 12));
-    await writeFile(tmp, JSON.stringify(manifest, null, 2) + "\n", { flag: "wx" });
-    await rename(tmp, manifestPath);
+    await replaceJsonFile(manifestPath, JSON.stringify(manifest, null, 2) + "\n");
     approvalRevoked = true;
   } catch (error) {
     if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") throw error;
   }
 
-  const backup = await checkedPath(root, join(project.dir, "avatar.json.before-" + project.specHash.slice(0, 16) + ".bak"));
-  await writeFile(backup, project.specBytes, { flag: "wx" });
-  const tmp = join(project.dir, "avatar.json.next-" + metadata.candidateHash.slice(0, 16));
-  await writeFile(tmp, candidateBytes, { flag: "wx" });
-  await rename(tmp, project.specFile);
+  await replaceJsonFile(project.specFile, candidateBytes);
   return {
     valid: true, status: "rebuild-required", approved: false,
     avatarSpecPath: project.specFile, backup, approvalRevoked,

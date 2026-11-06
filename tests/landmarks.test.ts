@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { AvatarWorkflowError } from "../src/character/avatar.js";
-import { composeCandidate, verifyCandidateScope } from "../src/character/landmarks.js";
+import { composeCandidate, verifyCandidateScope, preserveAvatarBackup } from "../src/character/landmarks.js";
 
 const source = "a".repeat(64);
 const spec = {
@@ -75,6 +78,22 @@ describe("staged agent landmark proposals", () => {
       .toThrow(/protected field: unrelated/);
     expect(() => verifyCandidateScope(spec, { ...valid, head: null }))
       .toThrow(/landmark group missing/);
+  });
+
+  it("reuses identical existing backups but rejects conflicting backups", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "puppetcontrol-backup-"));
+    const backup = join(directory, "avatar.json.bak");
+    const original = Buffer.from('{"head":{"center":[100,200]}}');
+    try {
+      await preserveAvatarBackup(backup, original);
+      await preserveAvatarBackup(backup, original);
+      expect(await readFile(backup)).toEqual(original);
+      await writeFile(backup, Buffer.from('{"tampered":true}'));
+      await expect(preserveAvatarBackup(backup, original))
+        .rejects.toMatchObject({ code: "BACKUP_CONFLICT" });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it("retains optional groups or accepts explicit replacements", () => {

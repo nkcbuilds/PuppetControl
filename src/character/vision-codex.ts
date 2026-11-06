@@ -238,7 +238,7 @@ export async function proposeCodexLandmarks(projectPath: string, root = process.
     if (!(error instanceof AvatarWorkflowError) ||
         error.code !== "REV2D_AVATAR_FAILED") throw error;
     return {
-      valid: true, status: "proposal-needs-revision", provider: "codex",
+      valid: false, status: "proposal-needs-revision", provider: "codex",
       proposalFile, approved: false, qualityWarnings, normalizedFields: normalized.changes, diagnostics: error.message,
       next: "Rev2D rejected suggested geometry. Open source, correct the proposal JSON and run landmarks stage manually.",
     };

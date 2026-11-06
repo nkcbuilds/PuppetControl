@@ -128,7 +128,9 @@ async function run(): Promise<void> {
       return;
     }
     if (third === "propose" && flags.length === 2 && flags[0] === "--provider" && flags[1] === "codex") {
-      print(await proposeCodexLandmarks(project));
+      const result = await proposeCodexLandmarks(project);
+      print(result);
+      if (!result.valid) process.exitCode = 1;
       return;
     }
     if (third === "stage" && flags.length === 2 && flags[0] === "--proposal" && flags[1]) {

@@ -16,7 +16,7 @@ PuppetControl passes the original image and the coordinate grid directly as Code
 
 The output is *never accepted automatically*. A geometry-valid proposal is staged as an isolated candidate with an overlay. The returned status can contain qualityWarnings; manual overlay inspection and final review remain compulsory.
 
-If the proposal is rejected by the Rev2D schema validator, the CLI returns status proposal-needs-revision with diagnostics and a proposal JSON path for manual corrections. Four safe model-output conversions are allowed: yStart/yEnd objects for head.neck and body.fade become two-element arrays, and [rx,ry] iris radii become the smaller positive scalar. Every correction is reported in normalizedFields; this repairs **format only**, not invented landmark locations.
+If the proposal is rejected by the Rev2D schema validator, the CLI returns valid:false / status proposal-needs-revision, a nonzero exit code, diagnostics and a proposal JSON path for manual corrections. Four safe model-output conversions are allowed: yStart/yEnd objects for head.neck and body.fade become two-element arrays, and [rx,ry] iris radii become the smaller positive scalar. Every correction is reported in normalizedFields; this repairs **format only**, not invented landmark locations.
 
 If this provider is unavailable, character landmarks assist prepares the same source-specific task and template for use directly inside Claude Code/Codex.
 

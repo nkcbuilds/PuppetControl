@@ -20,6 +20,16 @@ The command is repeatable for the same image and preserves previously edited tas
 
 ## 2. Generate a visual landmark proposal
 
+**Optional automated suggestion:** When the Codex CLI is installed and authenticated, run:
+
+~~~sh
+node dist/cli/index.js character landmarks propose avatars/portrait --provider codex
+~~~
+
+This invokes `codex exec` with the original PNG and coordinate grid attached as images, using a read-only sandbox and an ephemeral session. This is **not an offline command**: the images and task prompt are sent to the user's configured Codex model/provider and may consume the user's quota. It never automatically accepts or approves a character. Raw model response and validated proposal JSON are stored in ignored `work/vision-proposals/`. A valid proposal is staged for Rev2D geometry validation and a review overlay; rejected geometry is saved for manual correction with its diagnostics. Known unambiguous formatting mistakes (two vertical range objects and a two-radius iris ellipse) are normalized locally, with every conversion reported in normalizedFields. Missing iris data produces qualityWarnings even when geometry validation passes. See [real-image evaluation](CODEX_VISION_LANDMARKS.md). If Codex is not available, use the manual agent task below.
+
+**Manual Claude/Codex path:**
+
 Give Claude Code or Codex **the actual original source.png and coordinate grid** plus work/landmark-agent-task.md. Its job is to inspect the image, identify head, face, eye contours, mouth and body geometry, and fill in the proposal template. A model without image access cannot accurately place landmarks by reading JSON alone.
 
 The proposal must have this shape:

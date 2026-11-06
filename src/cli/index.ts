@@ -12,6 +12,7 @@ import { alignAudioWithRhubarb } from "../audio/align.js";
 import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.js";
 import { AvatarWorkflowError, importAvatar, buildAvatar } from "../character/avatar.js";
 import { prepareLandmarkTask, stageLandmarks, acceptLandmarks } from "../character/landmarks.js";
+import { proposeCodexLandmarks } from "../character/vision-codex.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -26,6 +27,7 @@ function usage(): never {
     "  puppetctl character import <picture.png> --out <project-dir> --id <character-id>\n" +
     "  puppetctl character build <project-dir> [--force]\n" +
     "  puppetctl character landmarks assist <project-dir>\n" +
+    "  puppetctl character landmarks propose <project-dir> --provider codex\n" +
     "  puppetctl character landmarks stage <project-dir> --proposal <proposal.json>\n" +
     "  puppetctl character landmarks accept <project-dir> --candidate <dir> --reviewed\n" +
     "  puppetctl audio align <voice.wav> --out <mouth.json> [--binary rhubarb] [--force]\n" +
@@ -44,13 +46,15 @@ async function run(): Promise<void> {
   if (first === "--help" || first === "help") {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
-      "Available: doctor, character inspect/import/build, landmark assist/stage/accept, audio align, scene validate/plan, single-rig scene preview/render.\n" +
-      "Not yet available: automatic landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
+      "Available: doctor, character inspect/import/build, landmark assist/propose/stage/accept, audio align, scene validate/plan, single-rig scene preview/render.\n" +
+      "Not yet available: reliable one-click landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
     );
     return;
   }
 
   if (first === "doctor") {
+    let codexCliAvailable = false;
+    try { execFileSync("codex", ["--version"], { stdio: "ignore", timeout: 5000 }); codexCliAvailable = true; } catch { /* optional provider */ }
     let ffmpegFound = false;
     try {
       execFileSync("ffmpeg", ["-version"], { stdio: "ignore", timeout: 5000 });
@@ -66,7 +70,8 @@ async function run(): Promise<void> {
       node: process.version,
       ffmpegAvailable: ffmpegFound,
       rev2dAvailable,
-      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "agent-landmark-proposal-staging", "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
+      codexCliAvailable,
+      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
       unavailableFeatures: ["animated-pose-bridges", "automatic-landmark-placement", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
     return;
@@ -120,6 +125,10 @@ async function run(): Promise<void> {
     if (!project) usage();
     if (third === "assist" && flags.length === 0) {
       print(await prepareLandmarkTask(project));
+      return;
+    }
+    if (third === "propose" && flags.length === 2 && flags[0] === "--provider" && flags[1] === "codex") {
+      print(await proposeCodexLandmarks(project));
       return;
     }
     if (third === "stage" && flags.length === 2 && flags[0] === "--proposal" && flags[1]) {

@@ -70,6 +70,9 @@
 - [ ] Save provenance/model/version/seed and QA status per pose.
 - [ ] Generate a new pose once; use same cached asset in second project.
 - [x] Support manual landmark repair, explicit rebuild, review sheets, and approval gating; generated rigs default to unapproved. Partial stage regeneration remains future work.
+- [x] Add image-hash-bound Claude/Codex landmark tasks, isolated proposal validation/overlay review, stale-candidate detection and explicit acceptance that revokes prior approvals.
+- [ ] Automatically infer landmarks from images using an evaluated optional vision model; the new task workflow only delegates placement to a vision-capable agent.
+- [ ] Add practical motion visual-QA heuristics and human-readable reports; geometry validation and manual review remain separate.
 
 ## Acceptance benchmark
 

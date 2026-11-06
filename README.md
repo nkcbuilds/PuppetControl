@@ -19,6 +19,7 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - Reproducible vector-art demo with a shared head/face and independent ArmRaise / ElbowExtend controls for reversible two-joint pointing.
 - Local Rhubarb speech alignment CLI and eased lip-sync viseme curves driving the mouth.
 - Assisted single-PNG character onboarding through Rev2D landmarks, local rig build, review sheets, unapproved-by-default manifest, and starter scene.
+- Agent-guided landmark proposals: source-hash-bound task, isolated geometry validation, visual overlay and explicit review/acceptance that revokes old rig approval.
 - Agent-readable CLI output, tests and CI.
 
 **Not implemented yet:** fully automatic landmark placement or reliable one-click rigging, AI-generated arbitrary new pose rigs, convincing smooth bridges between unrelated meshes (especially crossed arms), automatic transcription/TTS, captions, B-roll and multiple actors. The arm-raise gesture is genuinely animated, but its artwork is still prototype-quality. Other pose families may require edited hard cuts. The pose manifest is capability metadata; visual poses become usable only after their rig files are generated, validated and inspected.
@@ -76,7 +77,7 @@ Read [AGENTS.md](AGENTS.md), the project skill at [.agents/skills/puppetcontrol/
 4. Validate with npm run dev -- scene validate ... .
 5. Preview, inspect generated frames, and export.
 
-To start from a new illustration, use `node dist/cli/index.js character import art/portrait.png --out avatars/portrait --id portrait`, annotate landmarks, then run `node dist/cli/index.js character build avatars/portrait`. The generated actor remains unapproved pending visual QA. See [Character import guide](docs/CHARACTER_IMPORT.md).
+To start from a new illustration, run `node dist/cli/index.js character import art/portrait.png --out avatars/portrait --id portrait`, then `node dist/cli/index.js character landmarks assist avatars/portrait` to generate a Claude Code/Codex landmark task. Stage a proposed landmark JSON, inspect its overlay, explicitly accept it and rebuild. The generated actor remains unapproved pending visual QA. See the [Character import guide](docs/CHARACTER_IMPORT.md) and [agent landmark workflow](docs/LANDMARK_AGENT_WORKFLOW.md).
 
 Our native animation backend for the spike is **Rev2D**, pinned by the setup helper. It is not yet an npm-published dependency and must be installed locally. The project never silently downloads a rig/model while rendering.
 
@@ -89,9 +90,10 @@ Our native animation backend for the spike is **Rev2D**, pinned by the setup hel
 - [Experimental camera direction](docs/VIDEO_SHOTS.md)
 - [Continuous arm gesture proof](docs/ANIMATED_GESTURE.md)
 - [Assisted single-image import and QA](docs/CHARACTER_IMPORT.md)
+- [Agent-guided landmark review and acceptance](docs/LANDMARK_AGENT_WORKFLOW.md)
 - [Architecture decision log](docs/DECISIONS.md)
 
-Audio/lip-sync works with precomputed Rhubarb cues and a locally installed executable. The smooth pointing demo reuses the same face and deforms one rig continuously; crossed arms still need a more convincing bridge or intentional cut. Next: automatic landmark assistance with robust quality review, richer joint animation, and on-demand identity-consistent body pose generation.
+Audio/lip-sync works with precomputed Rhubarb cues and a locally installed executable. The smooth pointing demo reuses the same face and deforms one rig continuously; crossed arms still need a more convincing bridge or intentional cut. Next: improve landmark detection quality with a real optional image-understanding provider, add machine-assisted visual QA, and generate identity-consistent new body poses.
 
 ## License
 

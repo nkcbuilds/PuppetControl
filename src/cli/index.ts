@@ -11,6 +11,7 @@ import { PreviewUnsupportedError } from "../render/scene-plan.js";
 import { alignAudioWithRhubarb } from "../audio/align.js";
 import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.js";
 import { AvatarWorkflowError, importAvatar, buildAvatar } from "../character/avatar.js";
+import { prepareLandmarkTask, stageLandmarks, acceptLandmarks } from "../character/landmarks.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -24,6 +25,9 @@ function usage(): never {
     "  puppetctl character inspect <character.json>\n" +
     "  puppetctl character import <picture.png> --out <project-dir> --id <character-id>\n" +
     "  puppetctl character build <project-dir> [--force]\n" +
+    "  puppetctl character landmarks assist <project-dir>\n" +
+    "  puppetctl character landmarks stage <project-dir> --proposal <proposal.json>\n" +
+    "  puppetctl character landmarks accept <project-dir> --candidate <dir> --reviewed\n" +
     "  puppetctl audio align <voice.wav> --out <mouth.json> [--binary rhubarb] [--force]\n" +
     "  puppetctl scene validate <scene.json>\n" +
     "  puppetctl scene plan <scene.json>\n" +
@@ -40,7 +44,7 @@ async function run(): Promise<void> {
   if (first === "--help" || first === "help") {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
-      "Available: doctor, character inspect/import/build, audio align, scene validate/plan, single-rig scene preview/render.\n" +
+      "Available: doctor, character inspect/import/build, landmark assist/stage/accept, audio align, scene validate/plan, single-rig scene preview/render.\n" +
       "Not yet available: automatic landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
     );
     return;
@@ -62,7 +66,7 @@ async function run(): Promise<void> {
       node: process.version,
       ffmpegAvailable: ffmpegFound,
       rev2dAvailable,
-      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
+      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "agent-landmark-proposal-staging", "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
       unavailableFeatures: ["animated-pose-bridges", "automatic-landmark-placement", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
     return;
@@ -109,6 +113,25 @@ async function run(): Promise<void> {
     if (flags.length > 1 || (flags.length === 1 && flags[0] !== "--force")) usage();
     print(await buildAvatar(third, flags[0] === "--force"));
     return;
+  }
+
+  if (first === "character" && second === "landmarks" && third) {
+    const [project, ...flags] = process.argv.slice(5);
+    if (!project) usage();
+    if (third === "assist" && flags.length === 0) {
+      print(await prepareLandmarkTask(project));
+      return;
+    }
+    if (third === "stage" && flags.length === 2 && flags[0] === "--proposal" && flags[1]) {
+      print(await stageLandmarks(project, flags[1]));
+      return;
+    }
+    if (third === "accept" && flags.length === 3 && flags[0] === "--candidate" &&
+        flags[1] && flags[2] === "--reviewed") {
+      print(await acceptLandmarks(project, flags[1], true));
+      return;
+    }
+    usage();
   }
 
   if (first === "character" && second === "inspect" && third) {

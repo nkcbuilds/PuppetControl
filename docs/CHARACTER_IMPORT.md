@@ -23,6 +23,8 @@ The JSON result reports status "landmarks-required" and provides absolute paths.
 
 ## Step 2 — Annotate with Claude Code or Codex
 
+Use `node dist/cli/index.js character landmarks assist avatars/portrait` to create a coordinate-aware task and source-bound proposal template for Claude Code/Codex. See the [landmark agent workflow](LANDMARK_AGENT_WORKFLOW.md) for staged validation and approval revocation. The agent must still inspect the original image, not just copy coordinates.
+
 Read the local .cache/rev2d/docs/AVATAR.md or [Rev2D's online guide](https://github.com/RevStudio/Rev2D/blob/main/docs/AVATAR.md).
 
 Open the source and coordinate grid, then annotate the head ellipse, face ellipse, both eyes (openings and outer regions), nose, mouth, chin, head pivot/neck band, torso/body pivot and chest. Hair strands and accessories are optional. Use source image pixel coordinates; do not estimate positions from resized previews.

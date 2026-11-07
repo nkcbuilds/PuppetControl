@@ -84,6 +84,7 @@
 - [x] Test and expose an opt-in, validated short eye-sprite fade as a local derived-model experiment. Compare 13 actual Hana blink frames with native, immediate-switch and shortened fades: shorter fades visibly reduce double lashes at sampled midpoints, but introduce faster pose changes; never auto-approve.
 - [x] Add bounded per-character semantic head/eye look amplitudes with conservative imported-PNG starting values, schema validation, compiler tests and real Hana ±yaw/pitch/gaze frame comparisons. This does not establish visual approval.
 - [x] Test an optional stepped-eye visibility profile that removes sampled double-sprite ghosting at EyeOpen 0.19/0.69 on refined MIT Hana artwork, with a 25-frame A/B render, explicit abrupt-change warnings and local 45-frame end-to-end smoke video. The source remains unapproved; **this trades ghosting for pose popping**, not a seamless morph.
+- [x] Add a 36-frame, 30 FPS time-domain blink QA export with deterministic synthetic timing, unique Rev2D state caching, and JSON motion warnings. The actual short-fade and stepped 30 FPS frames were SHA-256 identical for this one schedule, showing threshold tuning alone is insufficient. Four mesh/overlay variants failed visual QA and were not integrated.
 - [ ] Produce and visually approve high-quality closed/half eye and mouth artwork; demonstrate seamless real rendered transitions across full blink playback and multiple character styles. The local proof drawing stays unapproved.
 
 ## First video milestone — reproducible usable slice (2026-11-07)

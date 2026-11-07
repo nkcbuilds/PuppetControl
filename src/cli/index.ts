@@ -42,7 +42,7 @@ function usage(): never {
     "  puppetctl character variants status <project-dir>\n" +
     "  puppetctl character variants import <project-dir> <variant-id ...> [--experimental-short-fade|--experimental-stepped-eyes] --reviewed-art\n" +
     "  puppetctl character qa compare <reference.png> <render.png> [--region x,y,w,h]\n" +
-    "  puppetctl character qa blink <project-dir> [--region x,y,w,h]\n" +
+    "  puppetctl character qa blink <project-dir> [--timed] [--region x,y,w,h]\n" +
     "  puppetctl character qa sequence <ordered-frame1.png> <frame2.png> ... [--region x,y,w,h] [--cut-after i,j] [--control-values v1,v2,...]\n" +
     "  puppetctl character landmarks assist <project-dir>\n" +
     "  puppetctl character landmarks propose <project-dir> --provider codex\n" +
@@ -194,11 +194,19 @@ async function run(): Promise<void> {
 
   if (first === "character" && second === "qa" && third === "blink") {
     const [project, ...flags] = process.argv.slice(5);
-    if (!project || (flags.length !== 0 &&
-      (flags.length !== 2 || flags[0] !== "--region" || !flags[1]))) usage();
-    print(await createBlinkReview(project, {
-      ...(flags.length ? { region: parsePixelRegionArgument(flags[1]!) } : {}),
-    }));
+    if (!project || project.startsWith("--")) usage();
+    let timed = false;
+    let region: ReturnType<typeof parsePixelRegionArgument> | undefined;
+    for (let index = 0; index < flags.length; index++) {
+      const flag = flags[index];
+      if (flag === "--timed" && !timed) {
+        timed = true;
+      } else if (flag === "--region" && !region && flags[index + 1] &&
+                 !flags[index + 1]!.startsWith("--")) {
+        region = parsePixelRegionArgument(flags[++index]!);
+      } else usage();
+    }
+    print(await createBlinkReview(project, { timed, ...(region ? { region } : {}) }));
     return;
   }
 

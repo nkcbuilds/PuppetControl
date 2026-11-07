@@ -15,6 +15,7 @@ import { AvatarWorkflowError, checkedPath, pinnedRev2D, runRev2D } from "./avata
 import { verifyAvatarBuildRecord, checkAvatarPoseCoverage } from "./provenance.js";
 import { comparePngSequence } from "./frame-sequence-qa.js";
 import { parsePixelRegionArgument, type PixelRegion } from "./pixel-qa.js";
+import { TIMED_BLINK, timedBlinkValues } from "./timed-blink.js";
 
 const execFileAsync = promisify(execFile);
 const MAX_MODEL_BYTES = 20_000_000;
@@ -72,7 +73,7 @@ export function eyeRegionFromAvatarSpec(
 
 async function contactSheet(
   framesDirectory: string, outputFile: string,
-  crop?: PixelRegion,
+  crop?: PixelRegion, columns = 5,
 ): Promise<void> {
   const cropStage = crop ? `crop=${crop.width}:${crop.height}:${crop.x}:${crop.y},` : "";
   const scaleStage = crop ? "scale=490:-2:flags=lanczos" : "scale=256:-2:flags=lanczos";
@@ -80,7 +81,7 @@ async function contactSheet(
     await execFileAsync("ffmpeg", [
       "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
       "-framerate", "30", "-i", join(framesDirectory, "frame-%03d.png"),
-      "-vf", cropStage + scaleStage + ",tile=5x5", "-frames:v", "1", outputFile,
+      "-vf", cropStage + scaleStage + `,tile=${columns}x${columns}`, "-frames:v", "1", outputFile,
     ], { windowsHide: true, shell: false, timeout: 90_000, maxBuffer: 4_000_000 });
   } catch (cause) {
     throw new AvatarWorkflowError("BLINK_CONTACT_FAILED",
@@ -89,7 +90,7 @@ async function contactSheet(
 }
 
 export async function createBlinkReview(
-  projectDir: string, options: { region?: PixelRegion; root?: string } = {},
+  projectDir: string, options: { region?: PixelRegion; root?: string; timed?: boolean } = {},
 ) {
   const root = resolve(options.root ?? process.cwd());
   const project = await checkedPath(root, resolve(root, projectDir));
@@ -135,43 +136,68 @@ export async function createBlinkReview(
   const framesDir = join(runRoot, "frames");
   await mkdir(framesDir, { recursive: true });
 
+  const values = options.timed ? timedBlinkValues() : BLINK_REVIEW_VALUES;
   const frames: string[] = [];
-  for (let index = 0; index < BLINK_CLOSING_VALUES.length; index++) {
-    const value = BLINK_CLOSING_VALUES[index]!;
+  const cachedFrames = new Map<string, string>();
+  let engineFramesRendered = 0;
+  for (let index = 0; index < values.length; index++) {
+    const value = values[index]!;
     const path = join(framesDir, `frame-${String(index).padStart(3, "0")}.png`);
-    await runRev2D(backend, [
-      "render", modelPath, "-o", path, "--param", `EyeLOpen=${value}`,
-      "--param", `EyeROpen=${value}`, "--bg", "#f0eaf4", "--ss", "1",
-    ], 60_000);
-    frames.push(path);
-  }
-  for (let index = BLINK_CLOSING_VALUES.length; index < BLINK_REVIEW_VALUES.length; index++) {
-    const sourceIndex = BLINK_REVIEW_VALUES.length - 1 - index;
-    const path = join(framesDir, `frame-${String(index).padStart(3, "0")}.png`);
-    await copyFile(frames[sourceIndex]!, path);
+    const prior = cachedFrames.get(value.toFixed(6));
+    if (prior) {
+      await copyFile(prior, path);
+    } else {
+      await runRev2D(backend, [
+        "render", modelPath, "-o", path, "--param", `EyeLOpen=${value}`,
+        "--param", `EyeROpen=${value}`, "--bg", "#f0eaf4", "--ss", "1",
+      ], 60_000);
+      cachedFrames.set(value.toFixed(6), path);
+      engineFramesRendered++;
+    }
     frames.push(path);
   }
   const report = await comparePngSequence(frames, {
-    region, controlValues: BLINK_REVIEW_VALUES,
+    region, controlValues: values,
   }, root);
   const fullSheet = join(runRoot, "blink-full.png");
   const eyeSheet = join(runRoot, "blink-eyes.png");
-  await contactSheet(framesDir, fullSheet);
-  await contactSheet(framesDir, eyeSheet, region);
+  await contactSheet(framesDir, fullSheet, undefined, options.timed ? 6 : 5);
+  await contactSheet(framesDir, eyeSheet, region, options.timed ? 6 : 5);
+  const timedVideo = options.timed ? join(runRoot, "blink-timed-30fps.mp4") : undefined;
+  if (timedVideo) {
+    try {
+      await execFileAsync("ffmpeg", [
+        "-nostdin", "-hide_banner", "-loglevel", "error", "-n",
+        "-framerate", "30", "-i", join(framesDir, "frame-%03d.png"),
+        "-frames:v", String(values.length),
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+        timedVideo,
+      ], { windowsHide: true, shell: false, timeout: 90_000, maxBuffer: 4_000_000 });
+    } catch (cause) {
+      throw new AvatarWorkflowError("BLINK_TIMED_EXPORT_FAILED",
+        "Cannot encode the synthetic timing preview: " + String(cause));
+    }
+  }
   const reportPath = join(runRoot, "blink-review.json");
   const evidence = {
     version: 1,
     status: "visual-review-required",
     approvedByThisCommand: false,
     projectDir: project,
-    values: BLINK_REVIEW_VALUES,
-    closingFramesRendered: BLINK_CLOSING_VALUES.length,
-    openingFramesReused: BLINK_REVIEW_VALUES.length - BLINK_CLOSING_VALUES.length,
+    mode: options.timed ? "synthetic-30fps-playback" : "parameter-sweep",
+    ...(options.timed ? { timing: TIMED_BLINK, timedVideo } : {}),
+    values,
+    engineFramesRendered,
+    repeatedFramesCopied: values.length - engineFramesRendered,
+    closingFramesRendered: options.timed ? undefined : BLINK_CLOSING_VALUES.length,
+    openingFramesReused: options.timed ? undefined : BLINK_REVIEW_VALUES.length - BLINK_CLOSING_VALUES.length,
     fpsForContactOrdering: 30,
     region, report,
     fullSheet, eyeSheet, framesDirectory: framesDir,
     notes: [
-      "Static eye sprites can plateau despite control changes; inspect every contact panel, particularly EyeOpen=0.19/0.69.",
+      options.timed
+        ? "Synthetic 140ms close, 65ms hold, 240ms open at 30fps; this is a playback diagnostic, not human-motion proof."
+        : "Parameter sweep is not natural blink timing; inspect EyeOpen=0.19/0.69.",
       "Numbers cannot assess lash seams, iris clipping, head turns or whether eyelids look natural.",
       "This command never changes the rig or its approval state. A human must still approve intentionally.",
     ],

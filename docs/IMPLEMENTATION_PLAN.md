@@ -95,6 +95,7 @@ This milestone is deliberately **narrower** than M5's universal single-image pro
 - [x] Validate the actual 75-frame, 15fps, 512×640 H.264 output of both scenes using FFprobe and visually inspect representative frames.
 - [x] Render an additional 12-second, 180-frame H.264/AAC sample using 36 real Rhubarb cues from a local test WAV; verify both streams and inspect representative frames. Local audio and video are ignored, not published.
 - [x] Prevent silent overwrite of existing MP4s by encoding to a temporary sibling file; `--force` explicitly replaces only after successful encoding.
+- [x] Add verified per-render imported rig/textures and exact-byte-bound voice/cues copies, fresh frame roots, and explicit-root scene input confinement. Local QA produced a 45-frame silent imported-rig test export and a 45-frame H.264/AAC bound-voice export; this is not an OS sandbox against malicious concurrent file mutation.
 - [x] Make `scene validate` distinguish planning-valid bridge/caption/motion documents from scenes the current renderer can actually export, with actionable errors.
 - [ ] Achieve visibly polished eye/mouth deformation and user-friendly assisted rig correction on **diverse** artwork; the imported Hana avatar previously showed artifacts and remains unapproved.
 - [x] Add optional exact-byte SHA-256 Rhubarb cue binding sidecars; verified bound first-video scene and live H.264/AAC render. Sidecars are opt-in, and legacy scenes remain supported.

@@ -2,17 +2,18 @@ import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { copyFile, link, lstat, mkdir, readFile, rename, stat, writeFile, unlink } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import type { Character, Scene } from "../scene/schemas.js";
 import { compilePerformance, PreviewUnsupportedError } from "./scene-plan.js";
 import { parseRhubarbMouthCuesJson } from "../audio/rhubarb.js";
-import { verifyCueBinding } from "../audio/cue-provenance.js";
+import { snapshotBoundSpeech } from "./speech-snapshot.js";
 import { buildFfmpegArgs, type FfmpegAudioInput } from "../audio/ffmpeg.js";
 import type { VideoOutput } from "../video/output.js";
 import type { SceneEvent } from "../scene/schemas.js";
 import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.js";
 import { verifyAvatarBuildRecord, checkAvatarPoseCoverage } from "../character/provenance.js";
 import { checkedPath, pinnedRev2D } from "../character/avatar.js";
+import { snapshotImportedRig } from "./rig-snapshot.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -40,6 +41,11 @@ interface Rev2DModel {
   animations: unknown[];
 }
 
+/** Accept only Rev2D's flat PNG frame names, never paths from the subprocess. */
+export function isSafeRev2DFrameName(value: unknown): value is string {
+  return typeof value === "string" && /^frame_[0-9]{4,8}\.png$/.test(value);
+}
+
 export interface FrameResult {
   framesDir: string;
   count: number;
@@ -54,13 +60,28 @@ export interface FrameResult {
   camera?: { events: SceneEvent[]; sourceWidth: number; sourceHeight: number };
 }
 
-function insideRoot(path: string, root = process.cwd()): string {
-  const absolute = resolve(path);
-  const diff = relative(resolve(root), absolute);
-  if (diff === ".." || diff.startsWith(".." + sep) || isAbsolute(diff)) {
-    throw new PreviewUnsupportedError("PATH_OUTSIDE_WORKSPACE", "Path must be inside the project directory: " + absolute);
+/**
+ * Frame directories are created once by this render, never reused.
+ * Resolve existing ancestors before mkdir so symlink/junction escapes are
+ * rejected even when the final target does not exist yet.
+ */
+export async function prepareFreshFrameDirectory(
+  outputDirectory: string, root = process.cwd(),
+): Promise<string> {
+  const destination = await checkedPath(root, resolve(outputDirectory));
+  await mkdir(dirname(destination), { recursive: true });
+  await checkedPath(root, destination);
+  try {
+    await mkdir(destination);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "EEXIST") {
+      throw new PreviewUnsupportedError("FRAME_DIRECTORY_EXISTS",
+        "This render directory already exists; choose a fresh path to avoid overwriting frames");
+    }
+    throw error;
   }
-  return absolute;
+  await checkedPath(root, destination);
+  return destination;
 }
 
 async function execute(binary: string, args: string[], cwd: string, timeout: number): Promise<string> {
@@ -105,6 +126,7 @@ async function readRig(modelPath: string, scene: Scene): Promise<Rev2DModel> {
 async function loadSpeech(
   scene: Scene,
   sceneFilePath: string,
+  framesDir: string,
 ): Promise<{
   speech?: { cues: ReturnType<typeof parseRhubarbMouthCuesJson>; startMs: number };
   audio?: FfmpegAudioInput;
@@ -119,13 +141,18 @@ async function loadSpeech(
   const cuesFile = await checkedPath(process.cwd(), resolve(directory, entry.cuesPath));
 
   if (entry.bindingPath) {
-    const bindingFile = await checkedPath(process.cwd(), resolve(directory, entry.bindingPath));
-    const verified = await verifyCueBinding(source, cuesFile, bindingFile);
-    if (!verified.valid) {
-      throw new PreviewUnsupportedError(verified.code, verified.message);
-    }
+    const binding = await checkedPath(process.cwd(), resolve(directory, entry.bindingPath));
+    const verifiedSnapshot = await snapshotBoundSpeech(
+      source, cuesFile, binding, join(framesDir, "verified-speech"), process.cwd(),
+    );
+    return {
+      speech: { cues: verifiedSnapshot.cues, startMs: entry.startMs },
+      audio: { path: verifiedSnapshot.audioPath, startMs: entry.startMs },
+    };
   }
 
+  // Legacy unbound scenes remain supported for compatibility. They do not
+  // claim protection against post-read changes to their source audio bytes.
   try {
     const file = await stat(source);
     if (!file.isFile() || file.size < 1) throw new Error("Speech file must be a nonempty file");
@@ -218,7 +245,8 @@ async function renderRigSegment(input: {
     args.push("--times", frameTimes.join(","), ...rev2dFrameRenderingFlags(scene));
     const stdout = await execute(process.execPath, args, rev2dRoot, 240_000);
     const response = JSON.parse(stdout) as { files?: string[]; width?: number; height?: number };
-    if (!Array.isArray(response.files) || response.files.length !== frameTimes.length) {
+    if (!Array.isArray(response.files) || response.files.length !== frameTimes.length ||
+        response.files.some((entry) => !isSafeRev2DFrameName(entry))) {
       throw new PreviewUnsupportedError("RENDER_FRAME_COUNT_MISMATCH", "Rig segment rendered wrong number of frames.");
     }
     if (response.width !== scene.resolution.width || response.height !== scene.resolution.height) {
@@ -294,11 +322,13 @@ export async function renderRev2DFrames(
   }
 
   const rev2dRoot = await checkedPath(process.cwd(), resolve(process.env.PUPPETCONTROL_REV2D_ROOT ?? ".cache/rev2d"));
-  const framesDir = insideRoot(outputDirectory);
-  const { speech, audio } = await loadSpeech(scene, sceneFilePath);
   const familyNames: string[] = [];
-
-  await mkdir(framesDir, { recursive: true });
+  const framesDir = await prepareFreshFrameDirectory(outputDirectory);
+  const { speech, audio } = await loadSpeech(scene, sceneFilePath, framesDir);
+  const isolatedRig = character.provenance ? await snapshotImportedRig(
+    characterPath, character.render.modelPath,
+    join(framesDir, "verified-actor-assets"), process.cwd(),
+  ) : undefined;
   let totalCopied = 0;
   for (const [segmentIndex, segment] of plan.segments.entries()) {
     // An interpolated transition occupies real output frames and uses the same
@@ -311,7 +341,8 @@ export async function renderRev2DFrames(
     // Different artwork must use separately declared rig assets; sharing rigId
     // alone does not create a visual pose change.
     const rigFile = family.modelPath ?? character.render.modelPath;
-    const modelPath = await checkedPath(process.cwd(), resolve(dirname(characterPath), rigFile));
+    const modelPath = isolatedRig?.modelPath ??
+      await checkedPath(process.cwd(), resolve(dirname(characterPath), rigFile));
     const model = await readRig(modelPath, scene);
     const segmentDir = join(framesDir, "segment_" + String(segmentIndex).padStart(3, "0"));
     const files = await renderRigSegment({

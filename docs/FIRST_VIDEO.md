@@ -90,6 +90,8 @@ By default, PuppetControl refuses to replace an existing MP4 at the chosen outpu
 
 For ordinary revisions, prefer a new `--out` name so the prior render remains available. Scene IDs by default follow the scene filename, reducing collisions between different scenes.
 
+For the filesystem and SHA-256 guarantees available during rendering (and their limits), see [RENDER_INTEGRITY.md](RENDER_INTEGRITY.md). Imported art and texture snapshots use a fresh render root; only scenes with `--binding` get a verified, private voice/cue copy before FFmpeg.
+
 ## Verify an exported MP4
 
 For a 5-second 15-fps 512x640 silent export:

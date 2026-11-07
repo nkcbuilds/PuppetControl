@@ -131,15 +131,18 @@ export async function createCueBinding(
     throw new CueBindingError("CUE_BINDING_PATH_INVALID", "Cue binding sidecar must be a separate file");
   }
 
-  const cueText = await readFile(cues.fullPath, "utf8");
-  const parsedCues = parseRhubarbMouthCuesJson(cueText);
+  // Parse the *same* bytes we hash. A separate filename reopen for the cue
+  // digest could otherwise hash a replacement file after parsing an older one.
+  const cueBytes = await readFile(cues.fullPath);
+  if (cueBytes.length < 1 || cueBytes.length > MAX_CUES_BYTES) {
+    throw new CueBindingError("CUE_BINDING_INPUT_INVALID", "Rhubarb cues are empty or oversized");
+  }
+  const parsedCues = parseRhubarbMouthCuesJson(cueBytes.toString("utf8"));
   if (parsedCues.length === 0) {
     throw new CueBindingError("CUE_BINDING_INPUT_INVALID", "Rhubarb cue file must contain at least one mouth cue");
   }
-  const [audioSha256, cuesSha256] = await Promise.all([
-    fingerprint(audio.fullPath),
-    fingerprint(cues.fullPath),
-  ]);
+  const cuesSha256 = createHash("sha256").update(cueBytes).digest("hex");
+  const audioSha256 = await fingerprint(audio.fullPath);
   const binding = cueBindingSchema.parse({
     format: CUE_BINDING_FORMAT,
     version: CUE_BINDING_VERSION,

@@ -24,6 +24,7 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - An opt-in `character approve <project> --reviewed` gate for visually inspected imported rigs; asset fingerprints and review sheets are checked before approval.
 - `scene new` creates editable expression/look/dialogue scenes from an already approved rig without changing the character; voice requires genuine Rhubarb cues.
 - Non-destructive MP4 export: output files are promoted only after successful FFmpeg encoding, with overwrite requiring explicit `--force`.
+- [Verified render inputs](docs/RENDER_INTEGRITY.md): imported rig/texture assets and bound voice/cues are copied and rehashed before subprocess use; fresh frame directories and explicit-root path checks reduce accidental file-replacement and symlink risks.
 - Guarded **local drawn eye/mouth variant** request, status and import commands using Rev2D masks and sprites. Imported drawings revoke approval and require a fresh visual review; no image generation happens automatically.
 - An optional **experimental** short-fade profile for imported half/closed eye drawings; avoids prolonged duplicate lash outlines at the cost of faster pose changes, revokes approval and regenerates review sheets.
 - Local PNG pixel and ordered-frame QA (full frame or explicit region) reports RGB activity, unexpected transparency, candidate motion jumps and changed-control stalls; these metrics never auto-approve a rig.

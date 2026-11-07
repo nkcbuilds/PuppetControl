@@ -23,6 +23,7 @@ import { comparePngFiles, parsePixelRegionArgument } from "../character/pixel-qa
 import { comparePngSequence } from "../character/frame-sequence-qa.js";
 import { createBlinkReview } from "../character/blink-review.js";
 import { createVectorEyelidRig } from "../character/eyelid-vector-workflow.js";
+import { refreshVectorReviewProof } from "../character/vector-review-evidence.js";
 import { DEFAULT_LOOK_LIMITS, IMPORTED_INITIAL_LOOK_LIMITS } from "../scene/look-limits.js";
 import { createCueBinding, verifyCueBinding, CueBindingError } from "../audio/cue-provenance.js";
 
@@ -40,6 +41,7 @@ function usage(): never {
     "  puppetctl character build <project-dir> [--force]\n" +
     "  puppetctl character approve <project-dir> --reviewed\n" +
     "  puppetctl character eyes vectorize <project-dir> --experimental\n" +
+    "  puppetctl character eyes review <project-dir>\n" +
     "  puppetctl character variants request <project-dir> [variant-id ...]\n" +
     "  puppetctl character variants status <project-dir>\n" +
     "  puppetctl character variants import <project-dir> <variant-id ...> [--experimental-short-fade|--experimental-stepped-eyes] --reviewed-art\n" +
@@ -164,6 +166,13 @@ async function run(): Promise<void> {
     const flags = process.argv.slice(5);
     if (flags.length !== 1 || flags[0] !== "--reviewed") usage();
     print(await approveImportedAvatar(third, true));
+    return;
+  }
+
+  if (first === "character" && second === "eyes" && third === "review") {
+    const [project, ...flags] = process.argv.slice(5);
+    if (!project || project.startsWith("--") || flags.length !== 0) usage();
+    print(await refreshVectorReviewProof(project));
     return;
   }
 

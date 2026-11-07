@@ -17,6 +17,7 @@ import {
   verifyAvatarBuildRecord, writeAvatarBuildRecord,
 } from "./provenance.js";
 import { createBlinkReview } from "./blink-review.js";
+import { publishVectorReviewProof } from "./vector-review-evidence.js";
 import { vectorizeImportedEyelids } from "./eyelid-vector.js";
 
 const MAX_MODEL = 20_000_000;
@@ -118,10 +119,12 @@ export async function createVectorEyelidRig(
   let review: Record<string, unknown>;
   try {
     const rendered = await createBlinkReview(project, { root, timed: true });
+    const proof = await publishVectorReviewProof(project, relModel, rendered, root);
     review = {
-      video: rendered.timedVideo,
-      eyes: rendered.eyeSheet,
-      full: rendered.fullSheet,
+      video: proof.video,
+      eyes: proof.eyes,
+      full: proof.full,
+      proofFile: proof.proofFile,
       report: rendered.reportPath,
     };
   } catch (cause) {

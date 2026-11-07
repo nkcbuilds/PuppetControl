@@ -27,6 +27,22 @@ The command requires a single-pose, provenance-verified imported Rev2D character
 
 It deliberately **revokes previous approval before publishing** the new model. Its unique `*-vector-eyelids-<uuid>.r2d.json` file is validated and hashed, the manifest is updated to reference it, and the original model and original user artwork are preserved. A successful operation generates a private `outputs/qa/blink-review/<uuid>/blink-timed-30fps.mp4` plus eye/full contact sheets and motion warnings. It returns the exact paths.
 
+### Current-model review evidence is required before approval
+
+Old `review/poses.png`, `review/turn.png`, `review/eyes.png` and `review/mouth.png` may have been generated **before** vectorization. Their presence alone is insufficient evidence for the new eyelid rig.
+
+The vectorize operation now writes `review/vector-eyelids-proof.json` only **after** a real timed Rev2D blink and full/eyes contact sheets have rendered. It copies those three artifacts to a unique `review/vector-eyes-<uuid>/` directory. The proof binds the **exact model SHA-256** from `avatar-build.json` to the SHA-256 hashes of all three review artifacts. `character approve --reviewed` refuses vector geometry without a matching proof, even if its model filename was manually changed.
+
+If FFmpeg fails, review files are lost or a generated package becomes stale, rerun:
+
+~~~powershell
+node dist/cli/index.js character eyes review avatars/portrait
+~~~
+
+This regenerates only the review evidence for the current provenance-verified vector rig. It leaves the rig and its existing approval state unchanged; it never auto-approves. Inspect the newly returned full-frame and eye close-ups and the timed video **plus** the older head/turn/mouth sheets for unchanged regions before recording your own `--reviewed` acknowledgement.
+
+A proof verifies exact bytes and which model produced the review package. It **does not** verify that a person actually looked at the images, that the images are visually acceptable, or that the model is suitable for other character styles.
+
 The current mutation is a local, non-transactional pair of file replacements for the model reference and fingerprint record. An interrupted update can temporarily fail verification, **never implicitly approve** an avatar. Restore the previous verified project copy or explicitly rebuild with `character build ... --force` if that happens. Make a backup of your imported project before experimenting.
 
 Do not combine the derived vector rig with subsequent drawn-eye variant imports without rebuilding the avatar first; Rev2D's upstream variant importer targets its original model filename.

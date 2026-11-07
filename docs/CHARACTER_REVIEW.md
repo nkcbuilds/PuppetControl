@@ -51,7 +51,7 @@ For a genuinely deforming eyelid outline instead of alpha-switching whole-eye pi
 node dist/cli/index.js character eyes vectorize avatars/portrait --experimental
 ~~~
 
-It uses the existing Rev2D eye-white mask to deform upper/lower lashes continuously, keeps the iris clipped, preserves the previous model, writes new fingerprints, and revokes approval. Unlike the sprite transitions it simplifies the painted lashes; visually inspect the resulting video. See [VECTOR_EYELIDS.md](VECTOR_EYELIDS.md).
+It uses the existing Rev2D eye-white mask to deform upper/lower lashes continuously, keeps the iris clipped, preserves the previous model, writes new fingerprints, and revokes approval. Unlike the sprite transitions it simplifies the painted lashes; visually inspect the resulting video. **The generated model requires a model-hash-bound eye/full/MP4 review proof before approval.** If evidence is missing, run `character eyes review <project>` and examine all fresh frames. See [VECTOR_EYELIDS.md](VECTOR_EYELIDS.md).
 
 ## 3. Inspect exact blink transition frames
 

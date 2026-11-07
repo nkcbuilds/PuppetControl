@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import { AvatarWorkflowError, checkedPath } from "./avatar.js";
 import { checkAvatarPoseCoverage, verifyAvatarBuildRecord } from "./provenance.js";
 import { characterSchema, type Character } from "../scene/schemas.js";
+import { requiresVectorReviewProof, verifyVectorReviewProof } from "./vector-review-evidence.js";
 
 const REVIEW_FILES = ["poses.png", "turn.png", "eyes.png", "mouth.png"] as const;
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
@@ -187,7 +188,11 @@ export async function approveImportedAvatar(
   const { raw, character } = parseManifest(originalContents);
   requireSupportedImportedAvatar(character);
   await verifyCurrentBuild(characterPath, character);
-  const reviewArtifacts = await validateReviewArtifacts(project);
+  const reviewArtifacts = [
+    ...await validateReviewArtifacts(project),
+    ...(await requiresVectorReviewProof(project, character.render!.modelPath)
+      ? await verifyVectorReviewProof(project, character.render!.modelPath) : []),
+  ];
 
   if (character.poseFamilies[0]!.approved) {
     return {
@@ -224,6 +229,9 @@ export async function approveImportedAvatar(
     // Recheck the exact build and review artifacts immediately before the atomic manifest swap.
     await verifyCurrentBuild(characterPath, character);
     await validateReviewArtifacts(project);
+    if (await requiresVectorReviewProof(project, character.render!.modelPath)) {
+      await verifyVectorReviewProof(project, character.render!.modelPath);
+    }
     await rename(tempPath, characterPath);
   } finally {
     await unlink(tempPath).catch(() => undefined);

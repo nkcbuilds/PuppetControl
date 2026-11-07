@@ -24,6 +24,11 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - An opt-in `character approve <project> --reviewed` gate for visually inspected imported rigs; asset fingerprints and review sheets are checked before approval.
 - `scene new` creates editable expression/look/dialogue scenes from an already approved rig without changing the character; voice requires genuine Rhubarb cues.
 - Non-destructive MP4 export: output files are promoted only after successful FFmpeg encoding, with overwrite requiring explicit `--force`.
+- Guarded **local drawn eye/mouth variant** request, status and import commands using Rev2D masks and sprites. Imported drawings revoke approval and require a fresh visual review; no image generation happens automatically.
+- An optional **experimental** short-fade profile for imported half/closed eye drawings; avoids prolonged duplicate lash outlines at the cost of faster pose changes, revokes approval and regenerates review sheets.
+- Local PNG pixel and ordered-frame QA (full frame or explicit region) reports RGB activity, unexpected transparency, candidate motion jumps and changed-control stalls; these metrics never auto-approve a rig.
+- Import review can now render a 25-frame blink contact sheet focused on the actual eyelid transition boundaries, with pixel/motion diagnostics that never auto-approve a rig; see [Character Review](docs/CHARACTER_REVIEW.md).
+- Optional SHA-256 Rhubarb cue bindings can detect when audio or mouth-cue bytes are replaced after alignment; a bound scene fails validation/render instead of silently using stale lip sync.
 - Agent-readable CLI output, tests and CI.
 
 **Not implemented yet:** fully automatic landmark placement or reliable one-click rigging, AI-generated arbitrary new pose rigs, convincing smooth bridges between unrelated meshes (especially crossed arms), automatic transcription/TTS, captions, B-roll and multiple actors. The arm-raise gesture is genuinely animated, but its artwork is still prototype-quality. Other pose families may require edited hard cuts. The pose manifest is capability metadata; visual poses become usable only after their rig files are generated, validated and inspected.
@@ -48,6 +53,10 @@ npm run demo:avatar    # Import a freshly rendered flat PNG and create an unappr
 npm run demo:first-video   # Prepare an ignored, unapproved Hana fixture for review
 # After actually reviewing the pinned Hana test fixture only:
 # node scripts/demo-first-video.mjs --reviewed-sample
+# For a built imported avatar, see docs/CHARACTER_IMPORT.md for drawn-variant request/import
+# Compare captured PNG frames:
+# node dist/cli/index.js character qa compare outputs/rest.png outputs/closed.png --region 175,220,170,75
+# node dist/cli/index.js character qa sequence outputs/f00.png outputs/f01.png outputs/f02.png --control-values 1,0.5,0
 ~~~
 
 The sample uses Rev2D's own **Hana** rig from the pinned MIT-licensed upstream checkout; generated character rig JSON is not checked into this repository. The derived example video is separately attributed and licensed under the original Rev2D terms.
@@ -102,6 +111,7 @@ Our native animation backend for the spike is **Rev2D**, pinned by the setup hel
 - [Agent-guided landmark review and acceptance](docs/LANDMARK_AGENT_WORKFLOW.md)
 - [Optional Codex vision inference: real-image results and limitations](docs/CODEX_VISION_LANDMARKS.md)
 - [Deep quality and reliability audit with observed pixel measurements](docs/QUALITY_AUDIT.md)
+- [Pixel-level visual QA (non-approval diagnostics)](docs/PIXEL_QA.md)
 - [Architecture decision log](docs/DECISIONS.md)
 
 Audio/lip-sync works with precomputed Rhubarb cues and a locally installed executable. The smooth pointing demo reuses the same face and deforms one rig continuously; crossed arms still need a more convincing bridge or intentional cut. Next: polish eyelid and mouth deformation by reusing Rev2D's reviewed drawn variants, expand automated image-quality probes and evaluate diverse source artwork. Do not confuse data validation with visual quality.

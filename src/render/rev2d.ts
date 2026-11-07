@@ -6,6 +6,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import type { Character, Scene } from "../scene/schemas.js";
 import { compilePerformance, PreviewUnsupportedError } from "./scene-plan.js";
 import { parseRhubarbMouthCuesJson } from "../audio/rhubarb.js";
+import { verifyCueBinding } from "../audio/cue-provenance.js";
 import { buildFfmpegArgs, type FfmpegAudioInput } from "../audio/ffmpeg.js";
 import type { VideoOutput } from "../video/output.js";
 import type { SceneEvent } from "../scene/schemas.js";
@@ -116,6 +117,14 @@ async function loadSpeech(
   const directory = dirname(resolve(sceneFilePath));
   const source = await checkedPath(process.cwd(), resolve(directory, entry.path));
   const cuesFile = await checkedPath(process.cwd(), resolve(directory, entry.cuesPath));
+
+  if (entry.bindingPath) {
+    const bindingFile = await checkedPath(process.cwd(), resolve(directory, entry.bindingPath));
+    const verified = await verifyCueBinding(source, cuesFile, bindingFile);
+    if (!verified.valid) {
+      throw new PreviewUnsupportedError(verified.code, verified.message);
+    }
+  }
 
   try {
     const file = await stat(source);

@@ -16,7 +16,7 @@ export interface FirstVideoOptions {
   fps: number;
   resolution: { width: number; height: number };
   output?: { width: number; height: number; background: string };
-  audio?: { path: string; cuesPath: string; startMs: number };
+  audio?: { path: string; cuesPath: string; bindingPath?: string; startMs: number };
   /** Supported semantic events in millisecond timestamps. */
   events?: SceneEvent[];
 }

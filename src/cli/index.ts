@@ -18,6 +18,11 @@ import { verifyAvatarBuildRecord } from "../character/provenance.js";
 import { approveImportedAvatar } from "../character/review-approval.js";
 import { FirstVideoSceneError } from "../scene/first-video.js";
 import { createFirstVideoFile } from "../scene/create-first-video-file.js";
+import { requestDrawnVariants, statusDrawnVariants, importDrawnVariants } from "../character/drawn-variants.js";
+import { comparePngFiles, parsePixelRegionArgument } from "../character/pixel-qa.js";
+import { comparePngSequence } from "../character/frame-sequence-qa.js";
+import { createBlinkReview } from "../character/blink-review.js";
+import { createCueBinding, verifyCueBinding, CueBindingError } from "../audio/cue-provenance.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -32,12 +37,20 @@ function usage(): never {
     "  puppetctl character import <picture.png> --out <project-dir> --id <character-id>\n" +
     "  puppetctl character build <project-dir> [--force]\n" +
     "  puppetctl character approve <project-dir> --reviewed\n" +
+    "  puppetctl character variants request <project-dir> [variant-id ...]\n" +
+    "  puppetctl character variants status <project-dir>\n" +
+    "  puppetctl character variants import <project-dir> <variant-id ...> [--experimental-short-fade] --reviewed-art\n" +
+    "  puppetctl character qa compare <reference.png> <render.png> [--region x,y,w,h]\n" +
+    "  puppetctl character qa blink <project-dir> [--region x,y,w,h]\n" +
+    "  puppetctl character qa sequence <ordered-frame1.png> <frame2.png> ... [--region x,y,w,h] [--cut-after i,j] [--control-values v1,v2,...]\n" +
     "  puppetctl character landmarks assist <project-dir>\n" +
     "  puppetctl character landmarks propose <project-dir> --provider codex\n" +
     "  puppetctl character landmarks stage <project-dir> --proposal <proposal.json>\n" +
     "  puppetctl character landmarks accept <project-dir> --candidate <dir> --reviewed\n" +
     "  puppetctl audio align <voice.wav> --out <mouth.json> [--binary rhubarb] [--force]\n" +
-    "  puppetctl scene new <out.scene.json> --character <character.json> [--id name] [--seconds 12] [--fps 24] [--size 1920x1080] [--voice voice.wav --cues mouth.json]\n" +
+    "  puppetctl audio bind <voice.wav> --cues <mouth.json> --out <mouth.binding.json>\n" +
+    "  puppetctl audio verify <voice.wav> --cues <mouth.json> --binding <mouth.binding.json>\n" +
+    "  puppetctl scene new <out.scene.json> --character <character.json> [--id name] [--seconds 12] [--fps 24] [--size 1920x1080] [--voice voice.wav --cues mouth.json [--binding mouth.binding.json]]\n" +
     "  puppetctl scene validate <scene.json>\n" +
     "  puppetctl scene plan <scene.json>\n" +
     "  puppetctl scene preview <scene.json>\n" +
@@ -53,7 +66,7 @@ async function run(): Promise<void> {
   if (first === "--help" || first === "help") {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
-      "Available: doctor, character inspect/import/build/approve, landmark assist/propose/stage/accept, audio align, scene new/validate/plan, single-rig scene preview/render.\n" +
+      "Available: doctor, character inspect/import/build/approve, drawn-variant request/status/import, pixel-QA compare/sequence, landmark assist/propose/stage/accept, audio align, scene new/validate/plan, single-rig scene preview/render.\n" +
       "Not yet available: reliable one-click landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
     );
     return;
@@ -78,9 +91,26 @@ async function run(): Promise<void> {
       ffmpegAvailable: ffmpegFound,
       rev2dAvailable,
       codexCliAvailable,
-      availableFeatures: ["character-inspect", "scene-create", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "explicit-visual-approval", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
+      availableFeatures: ["character-inspect", "scene-create", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(ffmpegFound ? ["png-pixel-qa", "png-sequence-qa"] : []), ...(rev2dAvailable ? ["assisted-png-avatar-import", "explicit-visual-approval", "local-drawn-variants", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
       unavailableFeatures: ["animated-pose-bridges", "automatic-landmark-placement", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
+    return;
+  }
+
+  if (first === "audio" && (second === "bind" || second === "verify") && third) {
+    const flags = process.argv.slice(5);
+    const destinationFlag = second === "bind" ? "--out" : "--binding";
+    if (flags.length !== 4 || flags[0] !== "--cues" || !flags[1] ||
+        flags[2] !== destinationFlag || !flags[3] ||
+        flags[1]!.startsWith("--") || flags[3]!.startsWith("--")) usage();
+    if (second === "bind") {
+      const binding = await createCueBinding(third, flags[1]!, flags[3]!);
+      print({ valid: true, status: "cue-bytes-bound", binding });
+    } else {
+      const result = await verifyCueBinding(third, flags[1]!, flags[3]!);
+      print(result);
+      if (!result.valid) process.exitCode = 1;
+    }
     return;
   }
 
@@ -131,6 +161,75 @@ async function run(): Promise<void> {
     const flags = process.argv.slice(5);
     if (flags.length !== 1 || flags[0] !== "--reviewed") usage();
     print(await approveImportedAvatar(third, true));
+    return;
+  }
+
+  if (first === "character" && second === "variants" && third) {
+    const [project, ...flags] = process.argv.slice(5);
+    if (!project) usage();
+    if (third === "status" && flags.length === 0) {
+      print(await statusDrawnVariants(project));
+      return;
+    }
+    if (third === "request") {
+      print(await requestDrawnVariants(project, flags));
+      return;
+    }
+    if (third === "import" && flags.length >= 2 && flags[flags.length - 1] === "--reviewed-art") {
+      const requested = flags.slice(0, -1);
+      const shortFadeIndex = requested.indexOf("--experimental-short-fade");
+      if (shortFadeIndex >= 0 && shortFadeIndex !== requested.length - 1) usage();
+      const ids = shortFadeIndex >= 0 ? requested.slice(0, -1) : requested;
+      print(await importDrawnVariants(project, ids, process.cwd(), { experimentalShortFade: shortFadeIndex >= 0 }));
+      return;
+    }
+    usage();
+  }
+
+  if (first === "character" && second === "qa" && third === "blink") {
+    const [project, ...flags] = process.argv.slice(5);
+    if (!project || (flags.length !== 0 &&
+      (flags.length !== 2 || flags[0] !== "--region" || !flags[1]))) usage();
+    print(await createBlinkReview(project, {
+      ...(flags.length ? { region: parsePixelRegionArgument(flags[1]!) } : {}),
+    }));
+    return;
+  }
+
+  if (first === "character" && second === "qa" && third === "compare") {
+    const [reference, candidate, ...flags] = process.argv.slice(5);
+    if (!reference || !candidate ||
+      (flags.length !== 0 && (flags.length !== 2 || flags[0] !== "--region" || !flags[1]))) usage();
+    const region = flags.length ? parsePixelRegionArgument(flags[1]!) : undefined;
+    print({ valid: true, comparison: await comparePngFiles(reference, candidate, region) });
+    return;
+  }
+
+  if (first === "character" && second === "qa" && third === "sequence") {
+    const args = process.argv.slice(5);
+    const firstOption = args.findIndex((arg) => arg.startsWith("--"));
+    const frameFiles = firstOption < 0 ? args : args.slice(0, firstOption);
+    const flags = firstOption < 0 ? [] : args.slice(firstOption);
+    if (frameFiles.length < 2 || frameFiles.length > 60) usage();
+    let region: ReturnType<typeof parsePixelRegionArgument> | undefined;
+    let cutAfter: number[] = [];
+    let controlValues: number[] | undefined;
+    const seen = new Set<string>();
+    for (let index = 0; index < flags.length; index += 2) {
+      const flag = flags[index];
+      const value = flags[index + 1];
+      if (!flag || !value || seen.has(flag) || !["--region", "--cut-after", "--control-values"].includes(flag)) usage();
+      seen.add(flag);
+      if (flag === "--region") region = parsePixelRegionArgument(value);
+      else if (flag === "--cut-after") {
+        if (!/^\d+(,\d+)*$/.test(value)) usage();
+        cutAfter = value.split(",").map(Number);
+      } else {
+        if (!/^-?(?:\d+(?:\.\d+)?|\.\d+)(,-?(?:\d+(?:\.\d+)?|\.\d+))*$/.test(value)) usage();
+        controlValues = value.split(",").map(Number);
+      }
+    }
+    print({ valid: true, report: await comparePngSequence(frameFiles, { ...(region ? { region } : {}), cutAfter, ...(controlValues ? { controlValues } : {}) }) });
     return;
   }
 
@@ -193,7 +292,7 @@ async function run(): Promise<void> {
 
   if (first === "scene" && second === "new" && third) {
     const flags = process.argv.slice(5);
-    const allowed = new Set(["--character", "--id", "--seconds", "--fps", "--size", "--voice", "--cues"]);
+    const allowed = new Set(["--character", "--id", "--seconds", "--fps", "--size", "--voice", "--cues", "--binding"]);
     const values = new Map<string, string>();
     for (let index = 0; index < flags.length; index += 2) {
       const flag = flags[index];
@@ -215,6 +314,7 @@ async function run(): Promise<void> {
       ...(dimensions ? { outputSize: { width: dimensions[0]!, height: dimensions[1]! } } : {}),
       ...(values.has("--voice") ? { voiceFile: values.get("--voice")! } : {}),
       ...(values.has("--cues") ? { cuesFile: values.get("--cues")! } : {}),
+      ...(values.has("--binding") ? { bindingFile: values.get("--binding")! } : {}),
     }));
     return;
   }
@@ -298,7 +398,7 @@ async function run(): Promise<void> {
 run().catch((error: unknown) => {
   print({
     valid: false,
-    code: error instanceof PreviewUnsupportedError || error instanceof PoseTimelineError || error instanceof AvatarWorkflowError || error instanceof FirstVideoSceneError ? error.code : "CLI_UNEXPECTED_ERROR",
+    code: error instanceof PreviewUnsupportedError || error instanceof PoseTimelineError || error instanceof AvatarWorkflowError || error instanceof FirstVideoSceneError || error instanceof CueBindingError ? error.code : "CLI_UNEXPECTED_ERROR",
     message: error instanceof Error ? error.message : String(error),
   });
   process.exitCode = 1;

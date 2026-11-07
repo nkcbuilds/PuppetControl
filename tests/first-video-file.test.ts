@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { createFirstVideoFile } from "../src/scene/create-first-video-file.js";
 import { loadAndValidateScene } from "../src/scene/load.js";
+import { createCueBinding } from "../src/audio/cue-provenance.js";
 
 let root = "";
 let working = "";
@@ -54,6 +55,32 @@ describe("first-video file creation", () => {
     const second = JSON.parse(await readFile(outputs[1]!, "utf8"));
     expect(first.id).not.toBe(second.id);
     expect(first.actors[0].characterPath).toBe(second.actors[0].characterPath);
+  });
+
+  it("binds voice and Rhubarb cues to immutable bytes and refuses stale audio before rendering", async () => {
+    const output = join(working, "bound-scene.json");
+    const wav = join(working, "voice.wav");
+    const cues = join(working, "voice.cues.json");
+    const sidecar = join(working, "voice.binding.json");
+    await writeFile(wav, Buffer.from("RIFF-test-voice-content"));
+    await writeFile(cues, JSON.stringify({
+      metadata: { soundFile: "voice.wav", duration: 0.2 },
+      mouthCues: [{ start: 0, end: 0.2, value: "A" }],
+    }));
+    await createCueBinding(wav, cues, sidecar);
+    const created = await createFirstVideoFile({
+      outputSceneFile: output, characterFile: hana, voiceFile: wav, cuesFile: cues,
+      bindingFile: sidecar, seconds: 3,
+    }, root);
+    expect(created.voiceBoundToCues).toBe(true);
+    const first = await loadAndValidateScene(output);
+    expect(first.valid).toBe(true);
+    await writeFile(wav, Buffer.from("RIFF-tampered-voice"));
+    const next = await loadAndValidateScene(output);
+    expect(next.valid).toBe(false);
+    if (!next.valid) {
+      expect(next.diagnostics.map((diagnostic) => diagnostic.code)).toContain("CUE_BINDING_STALE");
+    }
   });
 
   it("derives distinct default scene IDs from distinct filenames", async () => {

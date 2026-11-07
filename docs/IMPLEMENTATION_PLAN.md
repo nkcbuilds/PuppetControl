@@ -76,8 +76,13 @@
 - [x] Add conservative geometry triage for low torso pivot/fade, missing/outside-eye iris and shearing head pivot; return nonblocking warnings.
 - [x] Revoke existing approval before any --force build mutates Rev2D outputs, and fail closed on stale source/spec/model/texture fingerprints.
 - [x] Eliminate reproduced black edge artifacts caused by alpha-zero warped pixels in H.264: composite frames onto scene background, with a 60-frame before/after comparison.
-- [ ] Add pixel-level motion QA probes and a reviewable report; automated geometry warnings are not proof of visual quality.
-- [ ] Wrap Rev2D's existing drawn closed-eye/mouth variants to reduce visible deformation artifacts without writing another mesh engine.
+- [x] Implement bounded PNG rest/activity region QA; metrics never prove visual quality.
+- [x] Add 2–60 ordered-frame motion QA with optional ROI, control samples and intentional cut indices; verified on a 13-frame Hana blink cycle.
+- [x] Add a reviewable 25-frame blink contact sheet and bounded motion report covering EyeOpen 0.18/0.19/0.20 and 0.68/0.69/0.70; actual imported Hana test remained unapproved.
+- [ ] Add head/neck seam-specific QA and review multiple rights-cleared character styles; metrics must never auto-approve a rig.
+- [x] Wrap local Rev2D drawn eye/mouth variant request/status/import with explicit reviewed-art selection, approval revocation before import, post-import provenance refresh, and new review sheets. A real Hana avatar produced correct edit masks; unchanged fake drawings were rejected.
+- [x] Test and expose an opt-in, validated short eye-sprite fade as a local derived-model experiment. Compare 13 actual Hana blink frames with native, immediate-switch and shortened fades: shorter fades visibly reduce double lashes at sampled midpoints, but introduce faster pose changes; never auto-approve.
+- [ ] Produce and visually approve high-quality closed/half eye and mouth artwork; demonstrate seamless real rendered transitions across full blink playback and multiple character styles. The local proof drawing stays unapproved.
 
 ## First video milestone — reproducible usable slice (2026-11-07)
 
@@ -91,7 +96,8 @@ This milestone is deliberately **narrower** than M5's universal single-image pro
 - [x] Prevent silent overwrite of existing MP4s by encoding to a temporary sibling file; `--force` explicitly replaces only after successful encoding.
 - [x] Make `scene validate` distinguish planning-valid bridge/caption/motion documents from scenes the current renderer can actually export, with actionable errors.
 - [ ] Achieve visibly polished eye/mouth deformation and user-friendly assisted rig correction on **diverse** artwork; the imported Hana avatar previously showed artifacts and remains unapproved.
-- [ ] Verify acceptable lip synchronization with multiple natural speakers, and bind Rhubarb cue data to its source-audio fingerprint.
+- [x] Add optional exact-byte SHA-256 Rhubarb cue binding sidecars; verified bound first-video scene and live H.264/AAC render. Sidecars are opt-in, and legacy scenes remain supported.
+- [ ] Verify visually acceptable lip synchronization with multiple natural speakers; optional integrity binding alone does not prove phoneme alignment.
 - [ ] Produce a convincing, reproducible 10–15s video **using an independently imported and genuinely approved custom illustration** without developer intervention. The 12s test so far uses a pre-rigged licensed sample.
 
 ## Acceptance benchmark

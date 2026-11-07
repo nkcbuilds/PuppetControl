@@ -73,10 +73,12 @@ Rev2D creates eye-white, iris, upper/lower lid, lash, crease and foreground-hair
 
 ## 6. Next milestones
 
-1. Wrap Rev2D drawn-variant requests and imports as guarded PuppetControl CLI operations. Require explicit user/artwork permission and renewed review. No new mesh engine.
-2. Add image-based QA probes for rest-pose identity, blink/gaze/mouth activity, and head/neck discontinuities. Quantitative reports are triage, not automatic visual approval.
-3. Build a diverse rights-cleared benchmark matrix: eye size, hair over face, accessories/glasses, different skin tones and line styles, opaque versus transparent backgrounds and constrained 3/4 views. Track success/failure on each, not just demos.
-4. Only after a reliable single actor: improve body-pose transitions, synchronized multi-actor shots and user-facing authoring polish.
+1. **Guarded local drawn-variant CLI:** Rev2D requests masks and accepts explicitly selected, reviewed eye/mouth drawings. The throwaway Hana example was accepted geometrically, but the artwork had flat lids, residual lower contours and doubled fades. Its rig remains **unapproved**.
+2. **Experimental short-fade comparison:** Narrower closed→half and half→mesh opacity blends reduced prolonged double contours in selected frames at the cost of faster visible sprite changes. This does not repair skin-tone seams or missing intermediate art.
+3. **Bounded PNG QA:** Same-sized rest/activity comparisons, selected eye-region crops and transparency checks provide reproducible diagnostics, never artistic approval. Hana rest/closed eye crop previously showed 33.5879/255 mean RGB error (36.4392% changed).
+4. **Ordered sequence and blink montage:** 2–60 ordered PNG frame motion triage flags changed-control stalls and candidate jumps. The dedicated imported-avatar blink command renders 13 engine states and assembles a 25-frame contact sheet including EyeOpen 0.18/0.19/0.20 and 0.68/0.69/0.70. Actual Hana images still show bad half-closed artwork, ghosting and hard seams; the scene is not visually approved.
+5. **Rights-cleared multi-character quality benchmark:** Add at least ten different visual styles (eyes, hair occlusion, glasses, color and 3/4 views), track failures instead of extrapolating from one Hana illustration.
+6. **After reliable single-actor quality:** Improve head/neck seam checks, genuinely smooth body transitions and multi-actor shots.
 
 ### Local reproduction
 

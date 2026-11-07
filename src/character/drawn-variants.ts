@@ -10,6 +10,7 @@ import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { characterSchema } from "../scene/schemas.js";
 import { shortFadeDrawnEyes } from "./eye-short-fade.js";
+import { steppedDrawnEyes } from "./eye-stepped.js";
 import {
   AvatarWorkflowError, checkedPath, parsePngSize, pinnedRev2D, runRev2D,
 } from "./avatar.js";
@@ -128,16 +129,18 @@ export async function statusDrawnVariants(projectDir: string, root = process.cwd
  * The calling import operation revokes visual approval before writing.
  * Validation and new fingerprints are required after this step.
  */
-async function applyExperimentalShortFade(
+async function applyExperimentalEyeTransition(
   project: string, modelRelative: string, backend: string,
+  mode: "short-fade" | "stepped",
 ) {
   const modelPath = await checkedPath(project, join(project, modelRelative));
   const file = await stat(modelPath);
   if (!file.isFile() || file.size > MAX_MODEL_BYTES) {
-    throw new AvatarWorkflowError("EYE_SHORT_FADE_UNSUPPORTED", "Invalid or oversized Rev2D model.");
+    throw new AvatarWorkflowError("EYE_TRANSITION_UNSUPPORTED", "Invalid or oversized Rev2D model.");
   }
-  const transformed = shortFadeDrawnEyes(JSON.parse(await readFile(modelPath, "utf8")) as unknown);
-  const temporary = join(dirname(modelPath), ".puppetcontrol-shortfade-" + randomUUID() + ".r2d.json");
+  const input = JSON.parse(await readFile(modelPath, "utf8")) as unknown;
+  const transformed = mode === "stepped" ? steppedDrawnEyes(input) : shortFadeDrawnEyes(input);
+  const temporary = join(dirname(modelPath), ".puppetcontrol-eye-" + mode + "-" + randomUUID() + ".r2d.json");
   try {
     await writeFile(temporary, JSON.stringify(transformed.model), { flag: "wx" });
     await runRev2D(backend, ["validate", temporary]);
@@ -145,13 +148,18 @@ async function applyExperimentalShortFade(
   } finally {
     await unlink(temporary).catch(() => undefined);
   }
-  return { profile: "experimental-short-fade" as const, ...transformed.profile, changedBindings: transformed.changedBindings };
+  return { profile: mode === "stepped" ? "experimental-stepped-eyes" : "experimental-short-fade",
+    ...transformed.profile, changedBindings: transformed.changedBindings };
 }
 /** Import reviewed artwork, leave unapproved; preserve stale hashes on a partial failure. */
 export async function importDrawnVariants(
   projectDir: string, requested: readonly string[], root = process.cwd(),
-  options: { experimentalShortFade?: boolean } = {},
+  options: { experimentalShortFade?: boolean; experimentalSteppedEyes?: boolean } = {},
 ) {
+  if (options.experimentalShortFade && options.experimentalSteppedEyes) {
+    throw new AvatarWorkflowError("EYE_TRANSITION_FLAGS_CONFLICT",
+      "Choose one experimental eye transition profile, not both.");
+  }
   const ids = validateDrawnVariantIds(requested, true);
   const { project, manifestPath, manifest } = await verifiedImportedAvatar(projectDir, root);
   const source = await checkedPath(root, join(project, "source.png"));
@@ -171,11 +179,12 @@ export async function importDrawnVariants(
   // IMPORTANT: revoke before Rev2D can touch model, layers or texture files.
   await revokeAvatarApprovalBeforeBuild(manifestPath);
   let imported: unknown;
-  let profile: Awaited<ReturnType<typeof applyExperimentalShortFade>> | undefined;
+  let profile: Awaited<ReturnType<typeof applyExperimentalEyeTransition>> | undefined;
   try {
     imported = await runRev2D(backend, ["avatar", "variants", "import", project, ...ids], 240_000);
-    if (options.experimentalShortFade) {
-      profile = await applyExperimentalShortFade(project, manifest.render!.modelPath, backend);
+    if (options.experimentalShortFade || options.experimentalSteppedEyes) {
+      profile = await applyExperimentalEyeTransition(project, manifest.render!.modelPath, backend,
+        options.experimentalSteppedEyes ? "stepped" : "short-fade");
     }
     await runRev2D(backend, ["avatar", "poses", project], 240_000);
     const record = await createAvatarBuildRecord(project, manifest.render!.modelPath);

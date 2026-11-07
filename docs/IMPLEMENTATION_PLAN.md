@@ -83,6 +83,7 @@
 - [x] Wrap local Rev2D drawn eye/mouth variant request/status/import with explicit reviewed-art selection, approval revocation before import, post-import provenance refresh, and new review sheets. A real Hana avatar produced correct edit masks; unchanged fake drawings were rejected.
 - [x] Test and expose an opt-in, validated short eye-sprite fade as a local derived-model experiment. Compare 13 actual Hana blink frames with native, immediate-switch and shortened fades: shorter fades visibly reduce double lashes at sampled midpoints, but introduce faster pose changes; never auto-approve.
 - [x] Add bounded per-character semantic head/eye look amplitudes with conservative imported-PNG starting values, schema validation, compiler tests and real Hana ±yaw/pitch/gaze frame comparisons. This does not establish visual approval.
+- [x] Test an optional stepped-eye visibility profile that removes sampled double-sprite ghosting at EyeOpen 0.19/0.69 on refined MIT Hana artwork, with a 25-frame A/B render, explicit abrupt-change warnings and local 45-frame end-to-end smoke video. The source remains unapproved; **this trades ghosting for pose popping**, not a seamless morph.
 - [ ] Produce and visually approve high-quality closed/half eye and mouth artwork; demonstrate seamless real rendered transitions across full blink playback and multiple character styles. The local proof drawing stays unapproved.
 
 ## First video milestone — reproducible usable slice (2026-11-07)

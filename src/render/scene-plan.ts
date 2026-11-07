@@ -1,6 +1,7 @@
 import type { Character, Scene, SceneEvent } from "../scene/schemas.js";
 import type { RhubarbMouthCue } from "../audio/rhubarb.js";
 import { mapRhubarbCuesToRev2DVisemes } from "../audio/visemes.js";
+import { DEFAULT_LOOK_LIMITS, IMPORTED_INITIAL_LOOK_LIMITS } from "../scene/look-limits.js";
 
 export interface AnimationKey {
   t: number;
@@ -30,8 +31,13 @@ export class PreviewUnsupportedError extends Error {
 type ExpressionEvent = Extract<SceneEvent, { kind: "expression" }>;
 type LookEvent = Extract<SceneEvent, { kind: "look" }>;
 
-const HEAD_YAW_LIMIT = 22;
-const HEAD_PITCH_LIMIT = 12;
+
+
+
+/** Preserve exact zero for disabled look channels (never emit -0). */
+function scaledLook(value: number, limit: number): number {
+  return value === 0 || limit === 0 ? 0 : value * limit;
+}
 
 /** Piecewise linear evaluation is only used when selecting a new animation endpoint. */
 function valueAt(keys: AnimationKey[], timestamp: number): number {
@@ -209,11 +215,18 @@ export function compilePerformance(
     if (event.kind === "look") {
       const start = event.atMs / 1000;
       const end = Math.min(durationSeconds, (event.atMs + event.durationMs) / 1000);
+      // Imported flat art starts with restrained motion; reviewers can edit
+      // this envelope after inspecting actual eye, hair and neck poses.
+      // Pre-rigged layered characters keep the wider legacy mapping.
+      const bounds = render.lookLimits ?? (character.provenance
+        ? IMPORTED_INITIAL_LOOK_LIMITS : DEFAULT_LOOK_LIMITS);
       const mappings = {
-        AngleX: event.x * HEAD_YAW_LIMIT,
-        AngleY: -event.y * HEAD_PITCH_LIMIT,
-        EyeBallX: event.x * 0.5,
-        EyeBallY: event.y * 0.5,
+        AngleX: scaledLook(event.x, bounds.headYawDegrees),
+        AngleY: scaledLook(-event.y, bounds.headPitchDegrees),
+        EyeBallX: scaledLook(event.x, bounds.eyeX),
+        // Scene coordinates are screen-space (+y down); Rev2D +Y is up.
+        // Head and eyes must agree vertically instead of counter-steering.
+        EyeBallY: scaledLook(-event.y, bounds.eyeY),
       };
       for (const [parameter, goal] of Object.entries(mappings)) {
         if (!rigDefaults.has(parameter)) {

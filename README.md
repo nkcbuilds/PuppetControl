@@ -28,6 +28,7 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - An optional **experimental** short-fade profile for imported half/closed eye drawings; avoids prolonged duplicate lash outlines at the cost of faster pose changes, revokes approval and regenerates review sheets.
 - Local PNG pixel and ordered-frame QA (full frame or explicit region) reports RGB activity, unexpected transparency, candidate motion jumps and changed-control stalls; these metrics never auto-approve a rig.
 - Import review can now render a 25-frame blink contact sheet focused on the actual eyelid transition boundaries, with pixel/motion diagnostics that never auto-approve a rig; see [Character Review](docs/CHARACTER_REVIEW.md).
+- Imported flat-image actors start with narrower editable head/gaze motion limits, with consistent vertical look direction and unchanged amplitude for existing layered rigs; see [Look Motion](docs/LOOK_MOTION.md).
 - Optional SHA-256 Rhubarb cue bindings can detect when audio or mouth-cue bytes are replaced after alignment; a bound scene fails validation/render instead of silently using stale lip sync.
 - Agent-readable CLI output, tests and CI.
 

@@ -4,6 +4,7 @@ import { readFile, realpath, stat, lstat, mkdir, writeFile, rename, unlink } fro
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { promisify } from "node:util";
 import { characterSchema, sceneSchema, type Character, type Scene } from "../scene/schemas.js";
+import { IMPORTED_INITIAL_LOOK_LIMITS } from "../scene/look-limits.js";
 import { AVATAR_BUILD_RECORD, createAvatarBuildRecord, writeAvatarBuildRecord, revokeAvatarApprovalBeforeBuild } from "./provenance.js";
 import { assessAvatarGeometry } from "./geometry-quality.js";
 
@@ -102,7 +103,8 @@ export function createImportedCharacter(id: string, model: Rev2DModelParameters)
     expressions: Object.keys(expressionPresets),
     motions: [],
     transitions: [],
-    render: { backend: "rev2d", modelPath: id + ".r2d.json", expressionPresets },
+    render: { backend: "rev2d", modelPath: id + ".r2d.json", expressionPresets,
+      lookLimits: { ...IMPORTED_INITIAL_LOOK_LIMITS } },
   };
   return characterSchema.parse(manifest);
 }

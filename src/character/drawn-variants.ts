@@ -5,9 +5,11 @@
  * A successful import mutates the model/textures, invalidates previous visual
  * approval, rebuilds review sheets, then refreshes exact asset fingerprints.
  */
-import { open, readFile, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { open, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { dirname, join } from "node:path";
 import { characterSchema } from "../scene/schemas.js";
+import { shortFadeDrawnEyes } from "./eye-short-fade.js";
 import {
   AvatarWorkflowError, checkedPath, parsePngSize, pinnedRev2D, runRev2D,
 } from "./avatar.js";
@@ -24,6 +26,7 @@ export const DRAWN_VARIANT_IDS = [
 const ALLOWED_VARIANTS = new Set<string>(DRAWN_VARIANT_IDS);
 const DEFAULT_VARIANTS = ["eyes_closed", "mouth_a"];
 const MAX_DRAWING_BYTES = 30 * 1024 * 1024;
+const MAX_MODEL_BYTES = 20 * 1024 * 1024;
 
 export function validateDrawnVariantIds(
   requested: readonly string[], requireExplicit = false,
@@ -121,12 +124,33 @@ export async function statusDrawnVariants(projectDir: string, root = process.cwd
 }
 
 /**
- * Import only explicitly selected, locally reviewed drawings. Never approve a
- * rig here. If Rev2D partially mutates assets and then rejects art, the old
- * build record intentionally stays stale, preventing unreviewed rendering.
+ * Adjust only derived eye-opacity curves of a locally reviewed rig.
+ * The calling import operation revokes visual approval before writing.
+ * Validation and new fingerprints are required after this step.
  */
+async function applyExperimentalShortFade(
+  project: string, modelRelative: string, backend: string,
+) {
+  const modelPath = await checkedPath(project, join(project, modelRelative));
+  const file = await stat(modelPath);
+  if (!file.isFile() || file.size > MAX_MODEL_BYTES) {
+    throw new AvatarWorkflowError("EYE_SHORT_FADE_UNSUPPORTED", "Invalid or oversized Rev2D model.");
+  }
+  const transformed = shortFadeDrawnEyes(JSON.parse(await readFile(modelPath, "utf8")) as unknown);
+  const temporary = join(dirname(modelPath), ".puppetcontrol-shortfade-" + randomUUID() + ".r2d.json");
+  try {
+    await writeFile(temporary, JSON.stringify(transformed.model), { flag: "wx" });
+    await runRev2D(backend, ["validate", temporary]);
+    await rename(temporary, modelPath);
+  } finally {
+    await unlink(temporary).catch(() => undefined);
+  }
+  return { profile: "experimental-short-fade" as const, ...transformed.profile, changedBindings: transformed.changedBindings };
+}
+/** Import reviewed artwork, leave unapproved; preserve stale hashes on a partial failure. */
 export async function importDrawnVariants(
   projectDir: string, requested: readonly string[], root = process.cwd(),
+  options: { experimentalShortFade?: boolean } = {},
 ) {
   const ids = validateDrawnVariantIds(requested, true);
   const { project, manifestPath, manifest } = await verifiedImportedAvatar(projectDir, root);
@@ -147,8 +171,12 @@ export async function importDrawnVariants(
   // IMPORTANT: revoke before Rev2D can touch model, layers or texture files.
   await revokeAvatarApprovalBeforeBuild(manifestPath);
   let imported: unknown;
+  let profile: Awaited<ReturnType<typeof applyExperimentalShortFade>> | undefined;
   try {
     imported = await runRev2D(backend, ["avatar", "variants", "import", project, ...ids], 240_000);
+    if (options.experimentalShortFade) {
+      profile = await applyExperimentalShortFade(project, manifest.render!.modelPath, backend);
+    }
     await runRev2D(backend, ["avatar", "poses", project], 240_000);
     const record = await createAvatarBuildRecord(project, manifest.render!.modelPath);
     await writeAvatarBuildRecord(project, record);
@@ -163,6 +191,7 @@ export async function importDrawnVariants(
   return {
     valid: true, status: "review-required", approved: false, projectDir: project,
     variants: ids, backend: imported,
+    ...(profile ? { eyeTransition: profile } : {}),
     review: {
       eyes: join(project, "review", "eyes.png"),
       mouth: join(project, "review", "mouth.png"),

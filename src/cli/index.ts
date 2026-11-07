@@ -21,6 +21,8 @@ import { createFirstVideoFile } from "../scene/create-first-video-file.js";
 import { requestDrawnVariants, statusDrawnVariants, importDrawnVariants } from "../character/drawn-variants.js";
 import { comparePngFiles, parsePixelRegionArgument } from "../character/pixel-qa.js";
 import { comparePngSequence } from "../character/frame-sequence-qa.js";
+import { createBlinkReview } from "../character/blink-review.js";
+import { createCueBinding, verifyCueBinding, CueBindingError } from "../audio/cue-provenance.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -39,13 +41,16 @@ function usage(): never {
     "  puppetctl character variants status <project-dir>\n" +
     "  puppetctl character variants import <project-dir> <variant-id ...> [--experimental-short-fade] --reviewed-art\n" +
     "  puppetctl character qa compare <reference.png> <render.png> [--region x,y,w,h]\n" +
+    "  puppetctl character qa blink <project-dir> [--region x,y,w,h]\n" +
     "  puppetctl character qa sequence <ordered-frame1.png> <frame2.png> ... [--region x,y,w,h] [--cut-after i,j] [--control-values v1,v2,...]\n" +
     "  puppetctl character landmarks assist <project-dir>\n" +
     "  puppetctl character landmarks propose <project-dir> --provider codex\n" +
     "  puppetctl character landmarks stage <project-dir> --proposal <proposal.json>\n" +
     "  puppetctl character landmarks accept <project-dir> --candidate <dir> --reviewed\n" +
     "  puppetctl audio align <voice.wav> --out <mouth.json> [--binary rhubarb] [--force]\n" +
-    "  puppetctl scene new <out.scene.json> --character <character.json> [--id name] [--seconds 12] [--fps 24] [--size 1920x1080] [--voice voice.wav --cues mouth.json]\n" +
+    "  puppetctl audio bind <voice.wav> --cues <mouth.json> --out <mouth.binding.json>\n" +
+    "  puppetctl audio verify <voice.wav> --cues <mouth.json> --binding <mouth.binding.json>\n" +
+    "  puppetctl scene new <out.scene.json> --character <character.json> [--id name] [--seconds 12] [--fps 24] [--size 1920x1080] [--voice voice.wav --cues mouth.json [--binding mouth.binding.json]]\n" +
     "  puppetctl scene validate <scene.json>\n" +
     "  puppetctl scene plan <scene.json>\n" +
     "  puppetctl scene preview <scene.json>\n" +
@@ -89,6 +94,23 @@ async function run(): Promise<void> {
       availableFeatures: ["character-inspect", "scene-create", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(ffmpegFound ? ["png-pixel-qa", "png-sequence-qa"] : []), ...(rev2dAvailable ? ["assisted-png-avatar-import", "explicit-visual-approval", "local-drawn-variants", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
       unavailableFeatures: ["animated-pose-bridges", "automatic-landmark-placement", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
+    return;
+  }
+
+  if (first === "audio" && (second === "bind" || second === "verify") && third) {
+    const flags = process.argv.slice(5);
+    const destinationFlag = second === "bind" ? "--out" : "--binding";
+    if (flags.length !== 4 || flags[0] !== "--cues" || !flags[1] ||
+        flags[2] !== destinationFlag || !flags[3] ||
+        flags[1]!.startsWith("--") || flags[3]!.startsWith("--")) usage();
+    if (second === "bind") {
+      const binding = await createCueBinding(third, flags[1]!, flags[3]!);
+      print({ valid: true, status: "cue-bytes-bound", binding });
+    } else {
+      const result = await verifyCueBinding(third, flags[1]!, flags[3]!);
+      print(result);
+      if (!result.valid) process.exitCode = 1;
+    }
     return;
   }
 
@@ -162,6 +184,16 @@ async function run(): Promise<void> {
       return;
     }
     usage();
+  }
+
+  if (first === "character" && second === "qa" && third === "blink") {
+    const [project, ...flags] = process.argv.slice(5);
+    if (!project || (flags.length !== 0 &&
+      (flags.length !== 2 || flags[0] !== "--region" || !flags[1]))) usage();
+    print(await createBlinkReview(project, {
+      ...(flags.length ? { region: parsePixelRegionArgument(flags[1]!) } : {}),
+    }));
+    return;
   }
 
   if (first === "character" && second === "qa" && third === "compare") {
@@ -260,7 +292,7 @@ async function run(): Promise<void> {
 
   if (first === "scene" && second === "new" && third) {
     const flags = process.argv.slice(5);
-    const allowed = new Set(["--character", "--id", "--seconds", "--fps", "--size", "--voice", "--cues"]);
+    const allowed = new Set(["--character", "--id", "--seconds", "--fps", "--size", "--voice", "--cues", "--binding"]);
     const values = new Map<string, string>();
     for (let index = 0; index < flags.length; index += 2) {
       const flag = flags[index];
@@ -282,6 +314,7 @@ async function run(): Promise<void> {
       ...(dimensions ? { outputSize: { width: dimensions[0]!, height: dimensions[1]! } } : {}),
       ...(values.has("--voice") ? { voiceFile: values.get("--voice")! } : {}),
       ...(values.has("--cues") ? { cuesFile: values.get("--cues")! } : {}),
+      ...(values.has("--binding") ? { bindingFile: values.get("--binding")! } : {}),
     }));
     return;
   }
@@ -365,7 +398,7 @@ async function run(): Promise<void> {
 run().catch((error: unknown) => {
   print({
     valid: false,
-    code: error instanceof PreviewUnsupportedError || error instanceof PoseTimelineError || error instanceof AvatarWorkflowError || error instanceof FirstVideoSceneError ? error.code : "CLI_UNEXPECTED_ERROR",
+    code: error instanceof PreviewUnsupportedError || error instanceof PoseTimelineError || error instanceof AvatarWorkflowError || error instanceof FirstVideoSceneError || error instanceof CueBindingError ? error.code : "CLI_UNEXPECTED_ERROR",
     message: error instanceof Error ? error.message : String(error),
   });
   process.exitCode = 1;

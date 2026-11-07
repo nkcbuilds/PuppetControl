@@ -60,6 +60,12 @@ The previously generated, intentionally unapproved Hana sprite trial was rendere
 
 Rev2D's documented `eyes_half` variant intentionally remains fully visible over `EyeOpen` 0.3–0.6, explaining the two flat intervals; the tool cannot decide whether this artistic hold is acceptable. **Actual visual inspection** showed eye-outline ghosting at intermediate fade frames, even though the generic jump detector did not flag them. A smooth-looking statistic therefore does not imply smooth-looking animation. The generated variant art is experimental, locally ignored, not published and **not approved for use**.
 
+## Imported-avatar 25-frame blink review
+
+For provenance-tracked single-pose Rev2D imports, `node dist/cli/index.js character qa blink avatars/portrait` renders 13 genuine eyelid poses and reuses them in reverse order for a 25-frame montage. The tool saves `blink-eyes.png`, `blink-full.png`, the individual frames and a JSON motion-triage report in a new ignored `outputs/qa/blink-review/` directory. Unlike the general-purpose sequence command, this probes the short-fade boundaries `EyeOpen=0.18/0.19/0.20` and `0.68/0.69/0.70` explicitly. Inspect the montage and source drawings visually; no change to model, assets or approval is made. See [CHARACTER_REVIEW.md](CHARACTER_REVIEW.md).
+
+A live Hana experiment produced a 25-frame set from 13 engine renders and revealed 10 control-motion-stall candidates in the sampled eye crop, as well as visible double contours and unnatural half-closed eyelids. It remains **unapproved**. Those candidate counts reflect intentional sprite holds as well as potential defects; they are not an automatic accept/reject rating.
+
 ## Limitations and next checks
 
 - A different or badly deformed eye can produce a *higher* difference score; there is no universal minimum or maximum that certifies good animation.

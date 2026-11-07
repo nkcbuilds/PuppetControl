@@ -9,6 +9,7 @@ import { createFirstVideoScene } from "./first-video.js";
 import { checkedPath, AvatarWorkflowError } from "../character/avatar.js";
 import { checkAvatarPoseCoverage, verifyAvatarBuildRecord } from "../character/provenance.js";
 import { parseRhubarbMouthCuesJson } from "../audio/rhubarb.js";
+import { verifyCueBinding } from "../audio/cue-provenance.js";
 
 export interface CreateFirstVideoFileOptions {
   outputSceneFile: string;
@@ -18,6 +19,8 @@ export interface CreateFirstVideoFileOptions {
   fps?: number;
   voiceFile?: string;
   cuesFile?: string;
+  /** Optional exact-byte binding created with puppetctl audio bind. */
+  bindingFile?: string;
   outputSize?: { width: number; height: number };
 }
 
@@ -76,7 +79,11 @@ export async function createFirstVideoFile(
       "Use a scene duration of 1–60 seconds and an integer FPS of 1–60.");
   }
   const outputDir = dirname(outputFile);
-  let audio: { path: string; cuesPath: string; startMs: number } | undefined;
+  let audio: { path: string; cuesPath: string; bindingPath?: string; startMs: number } | undefined;
+  if (options.bindingFile && (!options.voiceFile || !options.cuesFile)) {
+    throw new AvatarWorkflowError("FIRST_VIDEO_BINDING_VOICE_REQUIRED",
+      "A cue binding requires --voice and --cues together.");
+  }
   if (Boolean(options.voiceFile) !== Boolean(options.cuesFile)) {
     throw new AvatarWorkflowError("FIRST_VIDEO_VOICE_CUES_REQUIRED",
       "Voice requires a Rhubarb cues JSON file; generate it first with puppetctl audio align. No simulated lip sync.");
@@ -92,7 +99,15 @@ export async function createFirstVideoFile(
       throw new AvatarWorkflowError("FIRST_VIDEO_LIP_CUES_INVALID",
         "Rhubarb cue file is invalid: " + (error instanceof Error ? error.message : String(error)));
     }
-    audio = { path: relativeForScene(outputDir, wav), cuesPath: relativeForScene(outputDir, cues), startMs: 0 };
+    let bindingPath: string | undefined;
+    if (options.bindingFile) {
+      const binding = await checkedPath(project, resolve(project, options.bindingFile));
+      const verification = await verifyCueBinding(wav, cues, binding);
+      if (!verification.valid) throw new AvatarWorkflowError(verification.code, verification.message);
+      bindingPath = relativeForScene(outputDir, binding);
+    }
+    audio = { path: relativeForScene(outputDir, wav), cuesPath: relativeForScene(outputDir, cues),
+      ...(bindingPath ? { bindingPath } : {}), startMs: 0 };
   }
   const scene = createFirstVideoScene(character, {
     id: options.id ?? basename(outputFile, extname(outputFile)).replace(/[^A-Za-z0-9_-]/g, "-").replace(/^[^A-Za-z0-9]+/, "").slice(0, 100),
@@ -112,7 +127,8 @@ export async function createFirstVideoFile(
   return {
     valid: true, status: "editable-scene-created", scene: scene.id, outputFile,
     character: character.id, rig: modelPath, reusedExistingRig: true,
-    hasVoice: Boolean(audio), durationMs: scene.durationMs, fps: scene.fps,
+    hasVoice: Boolean(audio), voiceBoundToCues: Boolean(audio?.bindingPath),
+    durationMs: scene.durationMs, fps: scene.fps,
     next: "Edit the scene's supported events, then run scene validate and scene render. The existing approved character and its art are reused unchanged.",
   };
 }

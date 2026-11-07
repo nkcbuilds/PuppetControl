@@ -107,6 +107,8 @@ Import checks the drawing size, then delegates to Rev2D's mask, global shift/zoo
 
 An upstream import can partially accept images before rejecting another. On error, the character remains unapproved and the old provenance may intentionally be stale; rebuild with `character build avatars/portrait --force` if necessary, inspect again, and only then retry. Do not assume that a successful import means the new drawings look good. Automatic image generation, reliable facial polish and smooth unrelated-pose bridges remain separate goals.
 
+For a detailed eyelid/mouth correction procedure and a 25-frame blink contact sheet, see [CHARACTER_REVIEW.md](CHARACTER_REVIEW.md). Use `node dist/cli/index.js character qa blink avatars/portrait` before approval; it never modifies the rig or approves it. The original imported Hana trial still exhibits significant seams and is not acceptable character art.
+
 ## Reproducible built-in demonstration
 
 ~~~sh

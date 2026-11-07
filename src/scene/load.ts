@@ -4,6 +4,7 @@ import { characterSchema, sceneSchema, type Character, type Scene } from "./sche
 import { validateSceneCapabilities, type Diagnostic, type SceneValidation } from "./validate.js";
 import { verifyAvatarBuildRecord, checkAvatarPoseCoverage } from "../character/provenance.js";
 import { checkedPath } from "../character/avatar.js";
+import { verifyCueBinding } from "../audio/cue-provenance.js";
 
 async function readJson(path: string): Promise<unknown> {
   const text = await readFile(path, "utf8");
@@ -41,6 +42,23 @@ export async function loadAndValidateScene(filePath: string, options: { root?: s
 
   const characters = new Map<string, Character>();
   const diagnostics: Diagnostic[] = [];
+  for (const [index, audio] of parsed.data.audio.entries()) {
+    if (!audio.bindingPath) continue; // Legacy scenes remain supported.
+    if (!audio.cuesPath) {
+      diagnostics.push({ severity: "error", code: "CUE_BINDING_MISSING_OR_INVALID",
+        path: "audio." + index, message: "Bound audio requires Rhubarb cuesPath." });
+      continue;
+    }
+    const directory = dirname(absolutePath);
+    const verified = await verifyCueBinding(
+      resolve(directory, audio.path), resolve(directory, audio.cuesPath),
+      resolve(directory, audio.bindingPath),
+    );
+    if (!verified.valid) diagnostics.push({
+      severity: "error", code: verified.code,
+      path: "audio." + index + ".bindingPath", message: verified.message,
+    });
+  }
   for (const actor of parsed.data.actors) {
     const characterFile = options.root
       ? await checkedPath(options.root, resolve(dirname(absolutePath), actor.characterPath))

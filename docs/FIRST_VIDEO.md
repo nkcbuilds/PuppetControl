@@ -73,6 +73,13 @@ Then create the scene with both the WAV and cue JSON:
 
     node dist/cli/index.js scene new .cache/my-video/voiced.json --character path/to/character.json --id voiced --seconds 5 --fps 15 --size 512x640 --voice path/to/voice.wav --cues .cache/my-video/mouth.json
 
+For extra protection against outdated lip sync, optionally bind exact voice and Rhubarb cue bytes before scene creation:
+
+    node dist/cli/index.js audio bind path/to/voice.wav --cues .cache/my-video/mouth.json --out .cache/my-video/mouth.binding.json
+    node dist/cli/index.js audio verify path/to/voice.wav --cues .cache/my-video/mouth.json --binding .cache/my-video/mouth.binding.json
+
+Then pass `--binding .cache/my-video/mouth.binding.json` alongside `--voice` and `--cues` in `scene new`. The scene will fail validation and rendering if either file is changed or moved. Sidecar creation deliberately refuses overwriting an existing binding; use a new output name for a fresh alignment. Older unbound scenes remain supported, but they do not have this exact-byte protection.
+
 The current first-video path requires --voice and --cues together. Validate and render the resulting scene normally. A real 12-second test using local nonredistributed voice input successfully generated 36 Rhubarb cues and a 180-frame H.264/AAC MP4 at 512×640, 15 FPS. The audio recording, cues and MP4 are intentionally kept only in ignored .cache/first-video-demo/qa-12s-voiced/. This proves file/cue/mux integration, not perceptual lip-sync quality on every speaker.
 
 ## Non-destructive rendering

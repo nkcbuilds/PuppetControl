@@ -141,6 +141,8 @@ export const sceneSchema = z.strictObject({
     startMs: milliseconds,
     actor: identifier.optional(),
     cuesPath: z.string().trim().min(1).optional(),
+    /** Optional SHA-256 sidecar binding the exact voice and Rhubarb cue bytes. */
+    bindingPath: z.string().trim().min(1).optional(),
   })).max(1).default([]),
   allowCameraCuts: z.boolean().default(false),
   events: z.array(sceneEventSchema).default([]),

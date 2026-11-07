@@ -29,7 +29,8 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - An optional **experimental** short-fade profile for imported half/closed eye drawings; avoids prolonged duplicate lash outlines at the cost of faster pose changes, revokes approval and regenerates review sheets.
 - Local PNG pixel and ordered-frame QA (full frame or explicit region) reports RGB activity, unexpected transparency, candidate motion jumps and changed-control stalls; these metrics never auto-approve a rig.
 - Import review can render a 25-frame parameter-sweep contact sheet and a separate **36-frame, 30 FPS synthetic timed-blink MP4** with motion warnings; see [Character Review](docs/CHARACTER_REVIEW.md) and [Time-domain Blink QA](docs/EYE_TIMING.md). The opt-in [stepped-eye experiment](docs/EYE_TRANSITIONS.md) removes sampled opacity ghosting but does not provide a seamless morph. The two modes even produced byte-identical frames in one real-time test.
-- Imported flat-image actors start with narrower editable head/gaze motion limits, with consistent vertical look direction and unchanged amplitude for existing layered rigs; see [Look Motion](docs/LOOK_MOTION.md).
+- Imported flat-image actors start with narrower editable head/gaze motion limits; see [Look Motion](docs/LOOK_MOTION.md).
+- Optional **experimental continuous vector eyelids** replace warped raster lash outlines with thin mask-following Rev2D mesh strips while keeping the iris clipped. This improves one real Hana sample without approval and requires artistic review; see [Vector Eyelids](docs/VECTOR_EYELIDS.md).
 - Optional SHA-256 Rhubarb cue bindings can detect when audio or mouth-cue bytes are replaced after alignment; a bound scene fails validation/render instead of silently using stale lip sync.
 - Agent-readable CLI output, tests and CI.
 
@@ -72,6 +73,8 @@ The sample uses Rev2D's own **Hana** rig from the pinned MIT-licensed upstream c
 [Watch the reversible gesture demo](docs/media/hana-gesture-cycle.mp4) (5 seconds, silent 30 fps; the same arm moves between neutral and pointing four times with no cuts).
 
 [Watch the 30 FPS timed-blink diagnostic](docs/media/hana-timed-blink-30fps.mp4) (1.2 seconds, silent 36-frame unapproved imported art test; not a polished animation).
+
+[Watch the continuous vector-eyelid experiment](docs/media/hana-vector-eyelids-30fps.mp4) (1.2-second 30 FPS diagnostic; less distorted lash geometry on one MIT sample, still requires visual approval).
 
 For the first reproducible **one-character video workflow**, see [First Video](docs/FIRST_VIDEO.md). With an already reviewed rig, run `character approve <project> --reviewed` for provenance-tracked imported characters, then `scene new <path> --character <character.json>`, `scene validate` and `scene render`. Create another scene with the same character path to reuse its rig, without regenerating artwork. To attach your own voice, use a real WAV and aligned Rhubarb cue JSON; no TTS is implied.
 

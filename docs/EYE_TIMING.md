@@ -61,4 +61,4 @@ These experiments live only in ignored `outputs/qa/eye-hybrid-20261107/` and wer
 3. Replay real 15/30/60 FPS performance timelines and compare actual frames across several rights-cleared drawing styles.
 4. Preserve the original character's linework and colors, and require explicit human review. No code metric alone may mark an avatar approved.
 
-The next engineering target is **quality-controlled intermediate eyelid artwork or a proper eyelid-specific deforming rig**, not another global opacity/fade profile.
+The subsequent [experimental vector-eyelid rig](VECTOR_EYELIDS.md) now supplies a genuine Rev2D eye-mask-following deformable upper/lower lash line, with no raster lash warp. It improves one MIT Hana sample but simplifies the original line art; further character styles and artist review remain required.

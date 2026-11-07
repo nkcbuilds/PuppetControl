@@ -22,6 +22,7 @@ import { requestDrawnVariants, statusDrawnVariants, importDrawnVariants } from "
 import { comparePngFiles, parsePixelRegionArgument } from "../character/pixel-qa.js";
 import { comparePngSequence } from "../character/frame-sequence-qa.js";
 import { createBlinkReview } from "../character/blink-review.js";
+import { DEFAULT_LOOK_LIMITS, IMPORTED_INITIAL_LOOK_LIMITS } from "../scene/look-limits.js";
 import { createCueBinding, verifyCueBinding, CueBindingError } from "../audio/cue-provenance.js";
 
 function print(value: unknown): void {
@@ -285,7 +286,13 @@ async function run(): Promise<void> {
       expressions: parsed.data.expressions,
       motions: parsed.data.motions,
       transitions: parsed.data.transitions,
-      note: "Schema validation does not prove that a visual rig/asset can render.",
+      ...(parsed.data.render ? {
+        lookLimits: parsed.data.render.lookLimits ?? (parsed.data.provenance
+          ? IMPORTED_INITIAL_LOOK_LIMITS : DEFAULT_LOOK_LIMITS),
+        lookLimitsSource: parsed.data.render.lookLimits ? "manifest" : parsed.data.provenance
+          ? "imported-initial-fallback" : "legacy-layered-fallback",
+      } : {}),
+      note: "Look limits bound movement, not visual quality; approval still requires real frame inspection.",
     });
     return;
   }

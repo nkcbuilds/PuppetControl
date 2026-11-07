@@ -60,6 +60,67 @@ describe("performance compiler (one rig)", () => {
     ]);
   });
 
+  it("keeps legacy look amplitude for existing layered characters", () => {
+    const animation = compilePerformance(build([
+      { atMs: 200, actor: "hana", kind: "look", x: 1, y: -1, durationMs: 400 },
+    ]), actor, "hana", defaultRig);
+    const values = new Map(animation.tracks.map((track) =>
+      [track.target, track.keys.find((key) => key.t === 0.6)?.v]));
+    expect(values.get("param:AngleX")).toBe(22);
+    expect(values.get("param:AngleY")).toBe(12);
+    expect(values.get("param:EyeBallX")).toBe(0.5);
+    expect(values.get("param:EyeBallY")).toBe(0.5);
+  });
+
+  it("restrains look for legacy flat-image imports even without a new manifest field", () => {
+    const imported = characterSchema.parse({
+      ...actor, provenance: { file: "avatar-build.json" },
+    });
+    const animation = compilePerformance(build([
+      { atMs: 200, actor: "hana", kind: "look", x: 1, y: -1, durationMs: 400 },
+    ]), imported, "hana", defaultRig);
+    const values = new Map(animation.tracks.map((track) =>
+      [track.target, track.keys.find((key) => key.t === 0.6)?.v]));
+    expect(values.get("param:AngleX")).toBe(8);
+    expect(values.get("param:AngleY")).toBe(5);
+    expect(values.get("param:EyeBallX")).toBe(0.2);
+    expect(values.get("param:EyeBallY")).toBe(0.2);
+  });
+
+  it("obeys each explicitly authored look limit independently, including zero", () => {
+    const authored = characterSchema.parse({
+      ...actor, render: {
+        ...actor.render,
+        lookLimits: { headYawDegrees: 4, headPitchDegrees: 1,
+          eyeX: 0, eyeY: 0.1 },
+      },
+    });
+    const animation = compilePerformance(build([
+      { atMs: 200, actor: "hana", kind: "look", x: -1, y: 1, durationMs: 400 },
+    ]), authored, "hana", defaultRig);
+    const values = new Map(animation.tracks.map((track) =>
+      [track.target, track.keys.find((key) => key.t === 0.6)?.v]));
+    expect(values.get("param:AngleX")).toBe(-4);
+    expect(values.get("param:AngleY")).toBe(-1);
+    expect(values.get("param:EyeBallX")).toBe(0);
+    expect(values.get("param:EyeBallY")).toBe(-0.1);
+  });
+
+  it("rejects malformed or wider-than-supported look limits", () => {
+    const limits = { headYawDegrees: 8, headPitchDegrees: 5, eyeX: 0.2, eyeY: 0.2 };
+    for (const bad of [
+      { ...limits, eyeX: 0.8 },
+      { ...limits, headYawDegrees: -1 },
+      { ...limits, headPitchDegrees: 30 },
+      { ...limits, eyeY: Number.POSITIVE_INFINITY },
+      { eyeX: 0.2 },
+      { ...limits, extra: true },
+    ]) {
+      expect(characterSchema.safeParse({ ...actor, render: { ...actor.render, lookLimits: bad } }).success)
+        .toBe(false);
+    }
+  });
+
   it("rejects unsupported pose changes rather than faking a seamless transition", () => {
     expect(() => compilePerformance(build([
       { atMs: 300, actor: "hana", kind: "pose", name: "crossed" },

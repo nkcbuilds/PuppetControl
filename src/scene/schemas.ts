@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_LOOK_LIMITS } from "./look-limits.js";
 
 const identifier = z.string().trim().min(1).max(100).regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/);
 const milliseconds = z.number().int().nonnegative();
@@ -38,6 +39,13 @@ export const characterSchema = z.strictObject({
     expressionPresets: z.record(z.string(), z.record(z.string(), z.number())),
     /** Controls for multiple poses represented by one deformable rig. */
     posePresets: z.record(z.string(), z.record(z.string(), z.number())).optional(),
+    /** Authored look amplitudes; limits alone do not certify visual quality. */
+    lookLimits: z.strictObject({
+      headYawDegrees: z.number().finite().min(0).max(DEFAULT_LOOK_LIMITS.headYawDegrees),
+      headPitchDegrees: z.number().finite().min(0).max(DEFAULT_LOOK_LIMITS.headPitchDegrees),
+      eyeX: z.number().finite().min(0).max(DEFAULT_LOOK_LIMITS.eyeX),
+      eyeY: z.number().finite().min(0).max(DEFAULT_LOOK_LIMITS.eyeY),
+    }).optional(),
   }).optional(),
   id: identifier,
   defaultPose: identifier,
@@ -98,6 +106,7 @@ export const sceneEventSchema = z.discriminatedUnion("kind", [
   z.strictObject({
     ...actorEvent,
     kind: z.literal("look"),
+    /** Normalized screen-space target: +x right, +y down. */
     x: z.number().min(-1).max(1),
     y: z.number().min(-1).max(1),
     durationMs: milliseconds.default(250),

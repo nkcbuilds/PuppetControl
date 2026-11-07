@@ -45,6 +45,9 @@ describe("agent-first avatar import contracts", () => {
     expect(result.expressions).toEqual(["neutral", "happy", "confused"]);
     expect(result.render?.expressionPresets.happy).toEqual({ MouthForm: 0.6 });
     expect(result.render?.expressionPresets.confused).toEqual({ MouthForm: -0.3 });
+    expect(result.render?.lookLimits).toEqual({
+      headYawDegrees: 8, headPitchDegrees: 5, eyeX: 0.2, eyeY: 0.2,
+    });
     expect(result.transitions).toEqual([]);
   });
 

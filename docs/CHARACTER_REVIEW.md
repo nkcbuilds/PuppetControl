@@ -66,4 +66,6 @@ Approval records a **user acknowledgement**, not proof of visual suitability. Ch
 
 On 2026-11-07, the short-fade Hana trial retained valid source/rig fingerprint integrity but **remained unapproved**. A 25-frame blink review rendered successfully, found control-motion plateaus and showed unnatural skin-tone patches and doubled eyelid contours at transition frames. The short-fade profile reduced one type of overlap but did not repair the underlying drawings. The ability to detect and inspect these issues is real; attractive universal blinking from arbitrary flat illustrations is still an open milestone.
 
-Future work: human-quality intermediate eyelid drawings, review-safe eye/head motion envelopes, additional licensed character styles and realistic mouth/voice assessment.
+The latest imported-character build uses deliberately smaller head/eye look amplitudes; configure the specific character after inspecting the head and gaze sheets, as described in [LOOK_MOTION.md](LOOK_MOTION.md). Small limits do not repair torn eyelid sprites or certify visual suitability.
+
+Future work: human-quality intermediate eyelid drawings, properly reviewed eye/head motion envelopes across styles, additional licensed character styles and realistic mouth/voice assessment.

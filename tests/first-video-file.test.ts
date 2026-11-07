@@ -1,22 +1,34 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { join, relative, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { createFirstVideoFile } from "../src/scene/create-first-video-file.js";
 import { loadAndValidateScene } from "../src/scene/load.js";
 
 let root = "";
 let working = "";
+let hana = "";
 beforeEach(async () => {
   root = resolve(process.cwd());
   await mkdir(resolve(root, ".cache"), { recursive: true });
   working = await mkdtemp(join(resolve(root, ".cache"), "first-video-file-"));
+  // Hermetic fixture: CI intentionally does not install the ignored .cache/rev2d
+  // backend. We only test scene-file composition, not real model rendering.
+  const character = JSON.parse(
+    await readFile(resolve(root, "examples/characters/hana/character.json"), "utf8"),
+  ) as { render: { modelPath: string } };
+  character.render.modelPath = "fixture.r2d.json";
+  hana = join(working, "character.json");
+  await writeFile(hana, JSON.stringify(character));
+  await writeFile(join(working, "fixture.r2d.json"), JSON.stringify({
+    meta: { name: "test-rig", width: 512, height: 640 },
+    parameters: [], animations: [],
+  }));
 });
 afterEach(async () => {
   if (working) await rm(working, { recursive: true, force: true });
 });
 
 describe("first-video file creation", () => {
-  const hana = resolve("examples/characters/hana/character.json");
   it("creates two editable scenes using exactly one already approved rig without mutating the character", async () => {
     const before = await readFile(hana, "utf8");
     const outputs = [join(working, "first.json"), join(working, "revision.json")];
@@ -73,7 +85,7 @@ describe("first-video file creation", () => {
   it("refuses unapproved imported-style characters rather than silently granting approval", async () => {
     const manifest = JSON.parse(await readFile(hana, "utf8"));
     manifest.poseFamilies[0].approved = false;
-    manifest.render.modelPath = relative(working, resolve(".cache/rev2d/examples/hana/hana.r2d.json"));
+    manifest.render.modelPath = "fixture.r2d.json";
     const file = join(working, "unapproved.json");
     await writeFile(file, JSON.stringify(manifest));
     await expect(createFirstVideoFile({

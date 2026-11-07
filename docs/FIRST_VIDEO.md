@@ -31,7 +31,7 @@ Only for this pinned Hana QA fixture, explicitly continue with:
 
     node scripts/demo-first-video.mjs --reviewed-sample
 
-That second command uses the current CLI scene new, scene validate, and scene render commands to create two separate 5-second scenes that both point at the same copied Hana rig. It then runs the FFprobe acceptance checker on both MP4s.
+That second command creates a **separate disposable copy** of the same pinned Hana sample. Its flag records acknowledgement for a test fixture, not verified review of that newly created copy. It uses the current CLI scene new, scene validate, and scene render commands to create two separate 5-second scenes that both point at the same copied Hana rig. It then runs the FFprobe acceptance checker on both MP4s.
 
 Each run is isolated under ignored .cache/first-video-demo/run-XXXXXX/. Expected outputs are:
 
@@ -50,14 +50,9 @@ The scene new command is for an actor that has already passed the project's real
 
 This validates source/landmark/rig/texture fingerprints and presence of review sheets before recording approval. It cannot technically verify that a human looked at them. Do not script approval for unreviewed user art.
 
-After npm run build, create an editable scene:
+After `npm run build`, create an editable scene. Commands below are each a single line so they work in **PowerShell**, Command Prompt, bash and other supported shells:
 
-    node dist/cli/index.js scene new .cache/my-video/scene-a.json \
-      --character path/to/character.json \
-      --id scene-a \
-      --seconds 5 \
-      --fps 15 \
-      --size 512x640
+    node dist/cli/index.js scene new .cache/my-video/scene-a.json --character path/to/character.json --id scene-a --seconds 5 --fps 15 --size 512x640
 
 Edit only events that the character actually supports, then validate and render:
 
@@ -72,20 +67,11 @@ Voice is optional. PuppetControl does not synthesize speech or pretend that lip 
 
 If Rhubarb is installed, align a WAV first:
 
-    node dist/cli/index.js audio align path/to/voice.wav \
-      --out .cache/my-video/mouth.json \
-      --binary rhubarb
+    node dist/cli/index.js audio align path/to/voice.wav --out .cache/my-video/mouth.json --binary rhubarb
 
 Then create the scene with both the WAV and cue JSON:
 
-    node dist/cli/index.js scene new .cache/my-video/voiced.json \
-      --character path/to/character.json \
-      --id voiced \
-      --seconds 5 \
-      --fps 15 \
-      --size 512x640 \
-      --voice path/to/voice.wav \
-      --cues .cache/my-video/mouth.json
+    node dist/cli/index.js scene new .cache/my-video/voiced.json --character path/to/character.json --id voiced --seconds 5 --fps 15 --size 512x640 --voice path/to/voice.wav --cues .cache/my-video/mouth.json
 
 The current first-video path requires --voice and --cues together. Validate and render the resulting scene normally. A real 12-second test using local nonredistributed voice input successfully generated 36 Rhubarb cues and a 180-frame H.264/AAC MP4 at 512×640, 15 FPS. The audio recording, cues and MP4 are intentionally kept only in ignored .cache/first-video-demo/qa-12s-voiced/. This proves file/cue/mux integration, not perceptual lip-sync quality on every speaker.
 
@@ -101,8 +87,7 @@ For ordinary revisions, prefer a new `--out` name so the prior render remains av
 
 For a 5-second 15-fps 512x640 silent export:
 
-    node scripts/check-first-video-video.mjs .cache/my-video/scene-a.mp4 \
-      --fps 15 --width 512 --height 640 --frames 75 --video-codec h264
+    node scripts/check-first-video-video.mjs .cache/my-video/scene-a.mp4 --fps 15 --width 512 --height 640 --frames 75 --video-codec h264
 
 For a voiced export, add --audio --audio-codec aac.
 

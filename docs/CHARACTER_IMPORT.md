@@ -95,6 +95,14 @@ node dist/cli/index.js character variants import avatars/portrait eyes_closed ey
 node dist/cli/index.js character variants status avatars/portrait
 ~~~
 
+For illustrations with **both** `eyes_closed` and `eyes_half` correctly drawn, there is an additional **opt-in experiment**:
+
+~~~sh
+node dist/cli/index.js character variants import avatars/portrait eyes_closed eyes_half --experimental-short-fade --reviewed-art
+~~~
+
+The default import preserves Rev2D's native fades. The experimental switch shortens the eye-sprite crossfade windows to `EyeOpen 0.18–0.20` (closed to half) and `0.68–0.70` (half to mesh). This reduces double outlines in some frames, **but makes the eyelids pop more quickly**, and ghosting remains possible within the short transition windows. It requires both drawn eye shapes on both sides and refuses unsupported/smiling-eye setups. A later import **without** the flag returns to the native generated fades. This is not a production-quality guarantee.
+
 Import checks the drawing size, then delegates to Rev2D's mask, global shift/zoom and seam checks. It revokes every existing pose approval **before** touching model or texture assets; on success it re-renders `review/eyes.png`, `review/mouth.png` and `review/poses.png` and refreshes asset fingerprints. **It never auto-approves.** Inspect the output for face jumps, halos, duplicate lines and inconsistent colors, then explicitly reapprove in `character.json` if acceptable.
 
 An upstream import can partially accept images before rejecting another. On error, the character remains unapproved and the old provenance may intentionally be stale; rebuild with `character build avatars/portrait --force` if necessary, inspect again, and only then retry. Do not assume that a successful import means the new drawings look good. Automatic image generation, reliable facial polish and smooth unrelated-pose bridges remain separate goals.

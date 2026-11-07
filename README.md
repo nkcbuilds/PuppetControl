@@ -25,6 +25,7 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - `scene new` creates editable expression/look/dialogue scenes from an already approved rig without changing the character; voice requires genuine Rhubarb cues.
 - Non-destructive MP4 export: output files are promoted only after successful FFmpeg encoding, with overwrite requiring explicit `--force`.
 - Guarded **local drawn eye/mouth variant** request, status and import commands using Rev2D masks and sprites. Imported drawings revoke approval and require a fresh visual review; no image generation happens automatically.
+- An optional **experimental** short-fade profile for imported half/closed eye drawings; avoids prolonged duplicate lash outlines at the cost of faster pose changes, revokes approval and regenerates review sheets.
 - Agent-readable CLI output, tests and CI.
 
 **Not implemented yet:** fully automatic landmark placement or reliable one-click rigging, AI-generated arbitrary new pose rigs, convincing smooth bridges between unrelated meshes (especially crossed arms), automatic transcription/TTS, captions, B-roll and multiple actors. The arm-raise gesture is genuinely animated, but its artwork is still prototype-quality. Other pose families may require edited hard cuts. The pose manifest is capability metadata; visual poses become usable only after their rig files are generated, validated and inspected.

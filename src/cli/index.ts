@@ -35,7 +35,7 @@ function usage(): never {
     "  puppetctl character approve <project-dir> --reviewed\n" +
     "  puppetctl character variants request <project-dir> [variant-id ...]\n" +
     "  puppetctl character variants status <project-dir>\n" +
-    "  puppetctl character variants import <project-dir> <variant-id ...> --reviewed-art\n" +
+    "  puppetctl character variants import <project-dir> <variant-id ...> [--experimental-short-fade] --reviewed-art\n" +
     "  puppetctl character landmarks assist <project-dir>\n" +
     "  puppetctl character landmarks propose <project-dir> --provider codex\n" +
     "  puppetctl character landmarks stage <project-dir> --proposal <proposal.json>\n" +
@@ -148,7 +148,11 @@ async function run(): Promise<void> {
       return;
     }
     if (third === "import" && flags.length >= 2 && flags[flags.length - 1] === "--reviewed-art") {
-      print(await importDrawnVariants(project, flags.slice(0, -1)));
+      const requested = flags.slice(0, -1);
+      const shortFadeIndex = requested.indexOf("--experimental-short-fade");
+      if (shortFadeIndex >= 0 && shortFadeIndex !== requested.length - 1) usage();
+      const ids = shortFadeIndex >= 0 ? requested.slice(0, -1) : requested;
+      print(await importDrawnVariants(project, ids, process.cwd(), { experimentalShortFade: shortFadeIndex >= 0 }));
       return;
     }
     usage();

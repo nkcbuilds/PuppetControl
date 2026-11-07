@@ -79,6 +79,21 @@
 - [ ] Add pixel-level motion QA probes and a reviewable report; automated geometry warnings are not proof of visual quality.
 - [ ] Wrap Rev2D's existing drawn closed-eye/mouth variants to reduce visible deformation artifacts without writing another mesh engine.
 
+## First video milestone — reproducible usable slice (2026-11-07)
+
+This milestone is deliberately **narrower** than M5's universal single-image promise. The verified workflow uses one previously reviewed Rev2D character, not an arbitrary one-click PNG rig. Commands and proof: [FIRST_VIDEO.md](FIRST_VIDEO.md).
+
+- [x] Reuse an approved rig in two independently authored 5-second scenes, without changing character model, texture or manifest.
+- [x] Create strict editable scene files via `scene new`, instead of hand-editing TypeScript; reject unsupported events and unapproved characters.
+- [x] Add an explicit `character approve --reviewed` gate for one provenance-tracked imported rig with required review sheets. Software cannot prove human review, so this is a record of an explicit acknowledgement, never an automatic decision.
+- [x] Validate the actual 75-frame, 15fps, 512×640 H.264 output of both scenes using FFprobe and visually inspect representative frames.
+- [x] Render an additional 12-second, 180-frame H.264/AAC sample using 36 real Rhubarb cues from a local test WAV; verify both streams and inspect representative frames. Local audio and video are ignored, not published.
+- [x] Prevent silent overwrite of existing MP4s by encoding to a temporary sibling file; `--force` explicitly replaces only after successful encoding.
+- [x] Make `scene validate` distinguish planning-valid bridge/caption/motion documents from scenes the current renderer can actually export, with actionable errors.
+- [ ] Achieve visibly polished eye/mouth deformation and user-friendly assisted rig correction on **diverse** artwork; the imported Hana avatar previously showed artifacts and remains unapproved.
+- [ ] Verify acceptable lip synchronization with multiple natural speakers, and bind Rhubarb cue data to its source-audio fingerprint.
+- [ ] Produce a convincing, reproducible 10–15s video **using an independently imported and genuinely approved custom illustration** without developer intervention. The 12s test so far uses a pre-rigged licensed sample.
+
 ## Acceptance benchmark
 
 A single 45-second 1080p/30 video with human/AI voice, four pose families (three minimum), convincing continuous head/face movement, visually acceptable lip-sync, smooth or intentionally hidden pose changes, consistent identity, and a successful second export after a one-line expression edit.

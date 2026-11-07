@@ -319,6 +319,6 @@ export async function acceptLandmarks(
     valid: true, status: "rebuild-required", approved: false,
     avatarSpecPath: project.specFile, backup, approvalRevoked,
     geometryWarnings: assessAvatarGeometry(candidateSpec),
-    next: "Run character build --force, visually review sheets, then manually approve the rig if acceptable.",
+    next: "Run character build --force, inspect all review sheets, then explicitly run character approve <projectDir> --reviewed only if the visual rig is genuinely acceptable.",
   };
 }

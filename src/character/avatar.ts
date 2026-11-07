@@ -274,6 +274,6 @@ export async function buildAvatar(projectDir: string, overwrite = false, root = 
       summary: join(project, "review", "summary.json"),
     },
     notes: built.notes ?? [],
-    next: "Inspect every review image, repair avatar.json if needed, rebuild with --force, and only then set poseFamilies[0].approved=true in character.json.",
+    next: "Inspect poses.png, turn.png, eyes.png and mouth.png; fix defects and rebuild with --force if needed. Only after real visual review, run puppetctl character approve <projectDir> --reviewed.",
   };
 }

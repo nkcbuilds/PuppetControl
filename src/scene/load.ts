@@ -3,6 +3,7 @@ import { dirname, resolve } from "node:path";
 import { characterSchema, sceneSchema, type Character, type Scene } from "./schemas.js";
 import { validateSceneCapabilities, type Diagnostic, type SceneValidation } from "./validate.js";
 import { verifyAvatarBuildRecord, checkAvatarPoseCoverage } from "../character/provenance.js";
+import { checkedPath } from "../character/avatar.js";
 
 async function readJson(path: string): Promise<unknown> {
   const text = await readFile(path, "utf8");
@@ -13,8 +14,8 @@ export type LoadResult =
   | { valid: true; scene: Scene; characters: Map<string, Character>; check: SceneValidation }
   | { valid: false; diagnostics: Diagnostic[] };
 
-export async function loadAndValidateScene(filePath: string): Promise<LoadResult> {
-  const absolutePath = resolve(filePath);
+export async function loadAndValidateScene(filePath: string, options: { root?: string } = {}): Promise<LoadResult> {
+  const absolutePath = options.root ? await checkedPath(options.root, resolve(filePath)) : resolve(filePath);
   let raw: unknown;
   try {
     raw = await readJson(absolutePath);
@@ -41,7 +42,9 @@ export async function loadAndValidateScene(filePath: string): Promise<LoadResult
   const characters = new Map<string, Character>();
   const diagnostics: Diagnostic[] = [];
   for (const actor of parsed.data.actors) {
-    const characterFile = resolve(dirname(absolutePath), actor.characterPath);
+    const characterFile = options.root
+      ? await checkedPath(options.root, resolve(dirname(absolutePath), actor.characterPath))
+      : resolve(dirname(absolutePath), actor.characterPath);
     try {
       const character = characterSchema.safeParse(await readJson(characterFile));
       if (!character.success) {

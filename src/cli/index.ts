@@ -7,6 +7,7 @@ import { readFile } from "node:fs/promises";
 import { characterSchema } from "../scene/schemas.js";
 import { loadAndValidateScene } from "../scene/load.js";
 import { encodeFrames, renderRev2DFrames } from "../render/rev2d.js";
+import { checkSceneRenderability } from "../render/renderability.js";
 import { PreviewUnsupportedError } from "../render/scene-plan.js";
 import { alignAudioWithRhubarb } from "../audio/align.js";
 import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.js";
@@ -14,6 +15,9 @@ import { AvatarWorkflowError, importAvatar, buildAvatar } from "../character/ava
 import { prepareLandmarkTask, stageLandmarks, acceptLandmarks } from "../character/landmarks.js";
 import { proposeCodexLandmarks, codexExecutableForPlatform } from "../character/vision-codex.js";
 import { verifyAvatarBuildRecord } from "../character/provenance.js";
+import { approveImportedAvatar } from "../character/review-approval.js";
+import { FirstVideoSceneError } from "../scene/first-video.js";
+import { createFirstVideoFile } from "../scene/create-first-video-file.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -27,15 +31,17 @@ function usage(): never {
     "  puppetctl character inspect <character.json>\n" +
     "  puppetctl character import <picture.png> --out <project-dir> --id <character-id>\n" +
     "  puppetctl character build <project-dir> [--force]\n" +
+    "  puppetctl character approve <project-dir> --reviewed\n" +
     "  puppetctl character landmarks assist <project-dir>\n" +
     "  puppetctl character landmarks propose <project-dir> --provider codex\n" +
     "  puppetctl character landmarks stage <project-dir> --proposal <proposal.json>\n" +
     "  puppetctl character landmarks accept <project-dir> --candidate <dir> --reviewed\n" +
     "  puppetctl audio align <voice.wav> --out <mouth.json> [--binary rhubarb] [--force]\n" +
+    "  puppetctl scene new <out.scene.json> --character <character.json> [--id name] [--seconds 12] [--fps 24] [--size 1920x1080] [--voice voice.wav --cues mouth.json]\n" +
     "  puppetctl scene validate <scene.json>\n" +
     "  puppetctl scene plan <scene.json>\n" +
     "  puppetctl scene preview <scene.json>\n" +
-    "  puppetctl scene render <scene.json> [--out output.mp4]\n" +
+    "  puppetctl scene render <scene.json> [--out output.mp4] [--force]\n" +
     "  puppetctl --help\n" +
     "\nPreview/render require a configured Rev2D rig. Single-image imports require reviewed landmarks and explicit approval.\n",
   );
@@ -47,7 +53,7 @@ async function run(): Promise<void> {
   if (first === "--help" || first === "help") {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
-      "Available: doctor, character inspect/import/build, landmark assist/propose/stage/accept, audio align, scene validate/plan, single-rig scene preview/render.\n" +
+      "Available: doctor, character inspect/import/build/approve, landmark assist/propose/stage/accept, audio align, scene new/validate/plan, single-rig scene preview/render.\n" +
       "Not yet available: reliable one-click landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
     );
     return;
@@ -72,7 +78,7 @@ async function run(): Promise<void> {
       ffmpegAvailable: ffmpegFound,
       rev2dAvailable,
       codexCliAvailable,
-      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
+      availableFeatures: ["character-inspect", "scene-create", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "explicit-visual-approval", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
       unavailableFeatures: ["animated-pose-bridges", "automatic-landmark-placement", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
     return;
@@ -118,6 +124,13 @@ async function run(): Promise<void> {
     const flags = process.argv.slice(5);
     if (flags.length > 1 || (flags.length === 1 && flags[0] !== "--force")) usage();
     print(await buildAvatar(third, flags[0] === "--force"));
+    return;
+  }
+
+  if (first === "character" && second === "approve" && third) {
+    const flags = process.argv.slice(5);
+    if (flags.length !== 1 || flags[0] !== "--reviewed") usage();
+    print(await approveImportedAvatar(third, true));
     return;
   }
 
@@ -178,17 +191,47 @@ async function run(): Promise<void> {
     return;
   }
 
+  if (first === "scene" && second === "new" && third) {
+    const flags = process.argv.slice(5);
+    const allowed = new Set(["--character", "--id", "--seconds", "--fps", "--size", "--voice", "--cues"]);
+    const values = new Map<string, string>();
+    for (let index = 0; index < flags.length; index += 2) {
+      const flag = flags[index];
+      const value = flags[index + 1];
+      if (!flag || !value || !allowed.has(flag) || values.has(flag)) usage();
+      values.set(flag, value);
+    }
+    const characterFile = values.get("--character");
+    if (!characterFile) usage();
+    const size = values.get("--size");
+    if (size && !/^\d+x\d+$/.test(size)) usage();
+    const dimensions = size?.split("x").map(Number);
+    print(await createFirstVideoFile({
+      outputSceneFile: third,
+      characterFile,
+      ...(values.has("--id") ? { id: values.get("--id")! } : {}),
+      ...(values.has("--seconds") ? { seconds: Number(values.get("--seconds")) } : {}),
+      ...(values.has("--fps") ? { fps: Number(values.get("--fps")) } : {}),
+      ...(dimensions ? { outputSize: { width: dimensions[0]!, height: dimensions[1]! } } : {}),
+      ...(values.has("--voice") ? { voiceFile: values.get("--voice")! } : {}),
+      ...(values.has("--cues") ? { cuesFile: values.get("--cues")! } : {}),
+    }));
+    return;
+  }
+
   if (first === "scene" && second === "validate" && third) {
-    const result = await loadAndValidateScene(third);
+    const result = await loadAndValidateScene(third, { root: process.cwd() });
+    const renderability = result.valid ? checkSceneRenderability(result.scene, result.characters) : null;
+    if (renderability && !renderability.valid) process.exitCode = 1;
     print(result.valid
-      ? { valid: true, scene: result.scene.id, diagnostics: result.check.diagnostics, transitions: result.check.transitions }
+      ? { valid: renderability!.valid, scene: result.scene.id, diagnostics: [...result.check.diagnostics, ...renderability!.diagnostics], transitions: result.check.transitions }
       : { valid: false, diagnostics: result.diagnostics });
     if (!result.valid) process.exitCode = 1;
     return;
   }
 
   if (first === "scene" && second === "plan" && third) {
-    const result = await loadAndValidateScene(third);
+    const result = await loadAndValidateScene(third, { root: process.cwd() });
     if (!result.valid) {
       print({ valid: false, diagnostics: result.diagnostics });
       process.exitCode = 1;
@@ -203,9 +246,15 @@ async function run(): Promise<void> {
   }
 
   if (first === "scene" && (second === "preview" || second === "render") && third) {
-    const result = await loadAndValidateScene(third);
+    const result = await loadAndValidateScene(third, { root: process.cwd() });
     if (!result.valid) {
       print({ valid: false, diagnostics: result.diagnostics });
+      process.exitCode = 1;
+      return;
+    }
+    const renderability = checkSceneRenderability(result.scene, result.characters);
+    if (!renderability.valid) {
+      print({ valid: false, diagnostics: renderability.diagnostics });
       process.exitCode = 1;
       return;
     }
@@ -229,10 +278,17 @@ async function run(): Promise<void> {
     }
     const args = process.argv.slice(5);
     const outputIndex = args.indexOf("--out");
-    if (outputIndex !== -1 && !args[outputIndex + 1]) usage();
-    if (args.length > 0 && (outputIndex !== 0 || args.length !== 2)) usage();
-    const outputFile = args[outputIndex + 1] ?? resolve("outputs", result.scene.id + ".mp4");
-    const mp4 = await encodeFrames(frameResult, outputFile);
+    const overwrite = args.includes("--force");
+    if (args.filter((value) => value === "--force").length > 1 ||
+        args.filter((value) => value === "--out").length > 1 ||
+        args.some((value, i) => value.startsWith("--") && value !== "--force" && value !== "--out") ||
+        (outputIndex >= 0 && (!args[outputIndex + 1] || args[outputIndex + 1]!.startsWith("--"))) ||
+        (outputIndex < 0 && args.length !== (overwrite ? 1 : 0)) ||
+        (outputIndex >= 0 && args.length !== (overwrite ? 3 : 2))) usage();
+    // Render policy: never overwrite a video without explicit --force.
+    if (second === "render" && outputIndex >= 0 && args[outputIndex + 1] === "--force") usage();
+    const outputFile = outputIndex >= 0 ? args[outputIndex + 1]! : resolve("outputs", result.scene.id + ".mp4");
+    const mp4 = await encodeFrames(frameResult, outputFile, { overwrite });
     print({ valid: true, kind: frameResult.audio ? "voiced-mp4" : "silent-mp4", output: mp4, ...frameResult, limitations: ["Shot framing is experimental; no captions, smooth between-pose bridges or automatic Rhubarb invocation yet."] });
     return;
   }
@@ -242,7 +298,7 @@ async function run(): Promise<void> {
 run().catch((error: unknown) => {
   print({
     valid: false,
-    code: error instanceof PreviewUnsupportedError || error instanceof PoseTimelineError || error instanceof AvatarWorkflowError ? error.code : "CLI_UNEXPECTED_ERROR",
+    code: error instanceof PreviewUnsupportedError || error instanceof PoseTimelineError || error instanceof AvatarWorkflowError || error instanceof FirstVideoSceneError ? error.code : "CLI_UNEXPECTED_ERROR",
     message: error instanceof Error ? error.message : String(error),
   });
   process.exitCode = 1;

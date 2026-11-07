@@ -21,6 +21,9 @@ The long-term goal: **generate artwork when necessary, animate and reuse it inde
 - Assisted single-PNG character onboarding through Rev2D landmarks, local rig build, review sheets, unapproved-by-default manifest, and starter scene.
 - Agent-guided landmark proposals: source-hash-bound task, optional **tested** Codex image-based suggestion, isolated geometry validation, visual overlay and explicit review/acceptance that revokes old rig approval.
 - Imported avatar asset provenance: source/spec/model/texture fingerprints checked by scene validation and render; untracked alternate imported pose models are refused. Force rebuild revokes approval before modifying art. Suspicious landmarks generate nonblocking geometry warnings.
+- An opt-in `character approve <project> --reviewed` gate for visually inspected imported rigs; asset fingerprints and review sheets are checked before approval.
+- `scene new` creates editable expression/look/dialogue scenes from an already approved rig without changing the character; voice requires genuine Rhubarb cues.
+- Non-destructive MP4 export: output files are promoted only after successful FFmpeg encoding, with overwrite requiring explicit `--force`.
 - Agent-readable CLI output, tests and CI.
 
 **Not implemented yet:** fully automatic landmark placement or reliable one-click rigging, AI-generated arbitrary new pose rigs, convincing smooth bridges between unrelated meshes (especially crossed arms), automatic transcription/TTS, captions, B-roll and multiple actors. The arm-raise gesture is genuinely animated, but its artwork is still prototype-quality. Other pose families may require edited hard cuts. The pose manifest is capability metadata; visual poses become usable only after their rig files are generated, validated and inspected.
@@ -42,6 +45,9 @@ npm run demo:directed   # Apply edited camera framing and gradual punch-in
 npm run demo:gesture    # Generate two-joint gesture rig and export edited 1080p demo
 npm run demo:gesture-cycle  # Render continuous raise/lower cycles without cuts
 npm run demo:avatar    # Import a freshly rendered flat PNG and create an unapproved rig + review sheets
+npm run demo:first-video   # Prepare an ignored, unapproved Hana fixture for review
+# After actually reviewing the pinned Hana test fixture only:
+# node scripts/demo-first-video.mjs --reviewed-sample
 ~~~
 
 The sample uses Rev2D's own **Hana** rig from the pinned MIT-licensed upstream checkout; generated character rig JSON is not checked into this repository. The derived example video is separately attributed and licensed under the original Rev2D terms.
@@ -53,6 +59,8 @@ The sample uses Rev2D's own **Hana** rig from the pinned MIT-licensed upstream c
 [Watch the 1080p arm-raise demo](docs/media/hana-gesture-1080p.mp4) (silent, 30 fps; pointing uses continuous shared-rig motion over 300ms; crossed arms still use a camera cut).
 
 [Watch the reversible gesture demo](docs/media/hana-gesture-cycle.mp4) (5 seconds, silent 30 fps; the same arm moves between neutral and pointing four times with no cuts).
+
+For the first reproducible **one-character video workflow**, see [First Video](docs/FIRST_VIDEO.md). With an already reviewed rig, run `character approve <project> --reviewed` for provenance-tracked imported characters, then `scene new <path> --character <character.json>`, `scene validate` and `scene render`. Create another scene with the same character path to reuse its rig, without regenerating artwork. To attach your own voice, use a real WAV and aligned Rhubarb cue JSON; no TTS is implied.
 
 Run a custom scene through the CLI:
 

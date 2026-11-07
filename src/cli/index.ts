@@ -40,7 +40,7 @@ function usage(): never {
     "  puppetctl character approve <project-dir> --reviewed\n" +
     "  puppetctl character variants request <project-dir> [variant-id ...]\n" +
     "  puppetctl character variants status <project-dir>\n" +
-    "  puppetctl character variants import <project-dir> <variant-id ...> [--experimental-short-fade] --reviewed-art\n" +
+    "  puppetctl character variants import <project-dir> <variant-id ...> [--experimental-short-fade|--experimental-stepped-eyes] --reviewed-art\n" +
     "  puppetctl character qa compare <reference.png> <render.png> [--region x,y,w,h]\n" +
     "  puppetctl character qa blink <project-dir> [--region x,y,w,h]\n" +
     "  puppetctl character qa sequence <ordered-frame1.png> <frame2.png> ... [--region x,y,w,h] [--cut-after i,j] [--control-values v1,v2,...]\n" +
@@ -178,10 +178,15 @@ async function run(): Promise<void> {
     }
     if (third === "import" && flags.length >= 2 && flags[flags.length - 1] === "--reviewed-art") {
       const requested = flags.slice(0, -1);
-      const shortFadeIndex = requested.indexOf("--experimental-short-fade");
-      if (shortFadeIndex >= 0 && shortFadeIndex !== requested.length - 1) usage();
-      const ids = shortFadeIndex >= 0 ? requested.slice(0, -1) : requested;
-      print(await importDrawnVariants(project, ids, process.cwd(), { experimentalShortFade: shortFadeIndex >= 0 }));
+      const optionNames = ["--experimental-short-fade", "--experimental-stepped-eyes"];
+      const selectedOptions = requested.filter((arg) => optionNames.includes(arg));
+      if (selectedOptions.length > 1 ||
+          (selectedOptions.length === 1 && requested.at(-1) !== selectedOptions[0])) usage();
+      const ids = selectedOptions.length ? requested.slice(0, -1) : requested;
+      print(await importDrawnVariants(project, ids, process.cwd(), {
+        experimentalShortFade: selectedOptions[0] === "--experimental-short-fade",
+        experimentalSteppedEyes: selectedOptions[0] === "--experimental-stepped-eyes",
+      }));
       return;
     }
     usage();

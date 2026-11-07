@@ -37,7 +37,13 @@ An **optional** short-fade experiment can reduce double contours by narrowing sp
 node dist/cli/index.js character variants import avatars/portrait eyes_closed eyes_half --experimental-short-fade --reviewed-art
 ~~~
 
-Both paths revoke any earlier approval and generate new review sheets and fingerprints.
+Another **opt-in, sharp-switch** experiment avoids showing two eyelid drawings simultaneously. It removes the sampled translucent/double-lash effect in the Hana trial, but **introduces abrupt eye-pose jumps** and is *not* a smooth blink:
+
+~~~powershell
+node dist/cli/index.js character variants import avatars/portrait eyes_closed eyes_half --experimental-stepped-eyes --reviewed-art
+~~~
+
+Choose **only one** experimental profile. Every import revokes earlier approval, regenerates review sheets and refreshes fingerprints. See [EYE_TRANSITIONS.md](EYE_TRANSITIONS.md) for the actual rendered comparison and trade-offs.
 
 ## 3. Inspect exact blink transition frames
 

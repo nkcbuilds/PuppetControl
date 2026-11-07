@@ -56,6 +56,16 @@ describe("local drawn avatar variants", () => {
     }
   });
 
+  it("rejects mutually exclusive eye transition modes before touching a previously approved avatar", async () => {
+    const dir = await fixture();
+    await expect(importDrawnVariants(dir, ["eyes_closed", "eyes_half"], dir, {
+      experimentalShortFade: true,
+      experimentalSteppedEyes: true,
+    })).rejects.toMatchObject({ code: "EYE_TRANSITION_FLAGS_CONFLICT" });
+    const manifest = JSON.parse(await readFile(join(dir, "character.json"), "utf8"));
+    expect(manifest.poseFamilies[0].approved).toBe(true);
+  });
+
   it("refuses stale imported avatar assets instead of laundering changed model bytes", async () => {
     const dir = await fixture();
     const modelFile = join(dir, "test.r2d.json");

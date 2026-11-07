@@ -43,7 +43,15 @@ Another **opt-in, sharp-switch** experiment avoids showing two eyelid drawings s
 node dist/cli/index.js character variants import avatars/portrait eyes_closed eyes_half --experimental-stepped-eyes --reviewed-art
 ~~~
 
-Choose **only one** experimental profile. Every import revokes earlier approval, regenerates review sheets and refreshes fingerprints. See [EYE_TRANSITIONS.md](EYE_TRANSITIONS.md) for the actual rendered comparison and trade-offs.
+Choose **only one** experimental sprite-transition profile. Every import revokes earlier approval, regenerates review sheets and refreshes fingerprints. See [EYE_TRANSITIONS.md](EYE_TRANSITIONS.md) for the actual rendered comparison and trade-offs.
+
+For a genuinely deforming eyelid outline instead of alpha-switching whole-eye pictures, a separate **opt-in vector-rig** experiment is now available after building the imported character:
+
+~~~powershell
+node dist/cli/index.js character eyes vectorize avatars/portrait --experimental
+~~~
+
+It uses the existing Rev2D eye-white mask to deform upper/lower lashes continuously, keeps the iris clipped, preserves the previous model, writes new fingerprints, and revokes approval. Unlike the sprite transitions it simplifies the painted lashes; visually inspect the resulting video. See [VECTOR_EYELIDS.md](VECTOR_EYELIDS.md).
 
 ## 3. Inspect exact blink transition frames
 

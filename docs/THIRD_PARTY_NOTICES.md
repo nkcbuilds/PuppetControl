@@ -5,7 +5,7 @@
 - Source project: https://github.com/RevStudio/Rev2D
 - Pinned source commit: f144581cdf1f12d781379c4df90d262b8c2dfa3d
 - File: examples/hana/hana.r2d.json in Rev2D upstream
-- Use: local demo pose-rig generation, attributed sample MP4, and the derived eye-transition crop in `docs/media/stepped-eye-before-after.png`. PuppetControl's own source code does not bundle the original full Hana model/artwork.
+- Use: local demo pose-rig generation, attributed sample MP4, the derived eye-transition crop in `docs/media/stepped-eye-before-after.png`, and the 30 FPS diagnostic preview in `docs/media/hana-timed-blink-30fps.mp4`. PuppetControl's own source code does not bundle the original full Hana model/artwork.
 - Original license: MIT License, Copyright (c) 2026 RevStudio.
 
 ### MIT License (RevStudio)

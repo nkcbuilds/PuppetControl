@@ -63,6 +63,10 @@ This is a **non-uniform parameter-sweep review clip** (25 frames at 30 FPS), **n
 
 A separate disposable, **QA-only** copy of the stepped actor was temporarily marked approved solely for renderer integration testing. It exported a valid 3-second, 15 FPS, 512×640, 45-frame H.264 MP4 via the verified-rig snapshot path. That marker was never applied to the experimental source character. The source remains `approved:false`.
 
+## Time-domain verification
+
+A 30 FPS, 1.2-second synthetic blink was rendered under both profiles. For the specific 140ms closing / 65ms hold / 240ms opening curve, **all 36 output PNGs matched byte-for-byte**, because the transition windows occurred between the actual frame sample times. This does not mean those profiles always render identically at other timings or FPS. See [EYE_TIMING.md](EYE_TIMING.md) and the [30 FPS diagnostic video](media/hana-timed-blink-30fps.mp4). The important release blocker is still the quality of the eye silhouettes.
+
 ## Acceptance boundary and next work
 
 Actual quality requires better curved, consistent eye artwork and/or a continuous eyelid-specific mesh with properly hidden irises. A reversible stepped visibility option is useful for stylized quick blinks, but shouldn't become a default or be described as Live2D-grade deformation.

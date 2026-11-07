@@ -53,6 +53,8 @@ node dist/cli/index.js character qa blink avatars/portrait
 
 This produces an **ignored, uniquely named** directory under `outputs/qa/blink-review/` with `blink-full.png`, `blink-eyes.png`, `blink-review.json` and the individual PNG frames. The 25-frame sequence samples closed/open and both short-fade transition boundaries, including `EyeOpen=0.19` and `EyeOpen=0.69`. Thirteen actual Rev2D states are rendered; the remaining twelve are the same states in reverse order. Review the montage left-to-right, top-to-bottom.
 
+To check what an actual video frame rate samples, also run `node dist/cli/index.js character qa blink avatars/portrait --timed`. This generates a separate 36-frame, 30 FPS synthetic blink MP4 and 6×6 contact sheet without approving or modifying the character. The default 25-frame parameter sweep remains available for narrow threshold defects. See [EYE_TIMING.md](EYE_TIMING.md): the old short-fade and stepped rigs gave all 36 **identical rendered frames** for one tested blink schedule despite different boundary stills.
+
 The JSON report lists candidate motion stalls, frame changes, sampled controls and crop coordinates. **None of those statistics establish good visual quality.** Scrutinize both eyelids for lingering lashes, matte seams, iris clipping, mismatched shadow/color and sudden double contours. Inspect the existing `review/eyes.png`, `review/mouth.png`, `review/turn.png` and `review/poses.png` too. If eye annotations are unavailable, specify `--region x,y,width,height` explicitly.
 
 ## 4. Approve only after actual visual review

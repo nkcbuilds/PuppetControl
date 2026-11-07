@@ -26,6 +26,7 @@
     "demo:gesture-cycle": "npm run demo:gesture:rig && tsx src/cli/index.ts scene render examples/scenes/hana-gesture-cycle.json",
     "demo:benchmark": "npm run demo:gesture:rig && tsx src/cli/index.ts scene render examples/scenes/hana-45s-benchmark.json",
     "demo:avatar": "npm run build && node scripts/demo-avatar-import.mjs",
+    "demo:first-video": "npm run build && node scripts/demo-first-video.mjs",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "build": "tsc",

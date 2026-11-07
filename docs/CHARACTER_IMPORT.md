@@ -68,7 +68,7 @@ This revokes prior approval **before** the rendering backend touches the rig, an
 
 Inspect every review sheet for torn eye closures, halos, doubled contours, missing hair/skin, incorrect mouth shapes, and awkward head movement. Correct the landmark source and rebuild as needed.
 
-When the rendered rig is genuinely acceptable, change the neutral pose family's approved field to true in character.json. Only then:
+When the rendered rig is genuinely acceptable, run `node dist/cli/index.js character approve avatars/portrait --reviewed`. This requires four existing review PNGs and a current source/spec/model/texture provenance record. The flag acknowledges review but cannot prove that someone genuinely inspected the artwork; never pass it automatically for user images. Only then:
 
 ~~~sh
 node dist/cli/index.js scene validate avatars/portrait/preview-scene.json

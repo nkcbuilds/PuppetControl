@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { copyFile, mkdir, readFile, stat, writeFile, unlink } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { copyFile, link, lstat, mkdir, readFile, rename, stat, writeFile, unlink } from "node:fs/promises";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { Character, Scene } from "../scene/schemas.js";
 import { compilePerformance, PreviewUnsupportedError } from "./scene-plan.js";
 import { parseRhubarbMouthCuesJson } from "../audio/rhubarb.js";
@@ -11,7 +11,7 @@ import type { VideoOutput } from "../video/output.js";
 import type { SceneEvent } from "../scene/schemas.js";
 import { planPoseTimeline, PoseTimelineError } from "../animation/pose-timeline.js";
 import { verifyAvatarBuildRecord, checkAvatarPoseCoverage } from "../character/provenance.js";
-import { pinnedRev2D } from "../character/avatar.js";
+import { checkedPath, pinnedRev2D } from "../character/avatar.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -114,8 +114,8 @@ async function loadSpeech(
     throw new PreviewUnsupportedError("LIP_CUES_REQUIRED", "Audio entry needs Rhubarb cuesPath JSON.");
   }
   const directory = dirname(resolve(sceneFilePath));
-  const source = insideRoot(resolve(directory, entry.path));
-  const cuesFile = insideRoot(resolve(directory, entry.cuesPath));
+  const source = await checkedPath(process.cwd(), resolve(directory, entry.path));
+  const cuesFile = await checkedPath(process.cwd(), resolve(directory, entry.cuesPath));
 
   try {
     const file = await stat(source);
@@ -284,7 +284,7 @@ export async function renderRev2DFrames(
     throw new PreviewUnsupportedError("FRAME_LIMIT", "Current renderer supports at most 2000 frames per scene.");
   }
 
-  const rev2dRoot = insideRoot(process.env.PUPPETCONTROL_REV2D_ROOT ?? ".cache/rev2d");
+  const rev2dRoot = await checkedPath(process.cwd(), resolve(process.env.PUPPETCONTROL_REV2D_ROOT ?? ".cache/rev2d"));
   const framesDir = insideRoot(outputDirectory);
   const { speech, audio } = await loadSpeech(scene, sceneFilePath);
   const familyNames: string[] = [];
@@ -302,7 +302,7 @@ export async function renderRev2DFrames(
     // Different artwork must use separately declared rig assets; sharing rigId
     // alone does not create a visual pose change.
     const rigFile = family.modelPath ?? character.render.modelPath;
-    const modelPath = insideRoot(resolve(dirname(characterPath), rigFile));
+    const modelPath = await checkedPath(process.cwd(), resolve(dirname(characterPath), rigFile));
     const model = await readRig(modelPath, scene);
     const segmentDir = join(framesDir, "segment_" + String(segmentIndex).padStart(3, "0"));
     const files = await renderRigSegment({
@@ -361,19 +361,47 @@ export async function renderRev2DFrames(
 
 export async function encodeFrames(
   frames: FrameResult,
-  out: string,
+  out: string, options: { overwrite?: boolean } = {},
 ): Promise<string> {
-  const outputFile = insideRoot(out);
+  const outputFile = await checkedPath(process.cwd(), resolve(out));
   await mkdir(dirname(outputFile), { recursive: true });
+  if (!outputFile.toLowerCase().endsWith(".mp4")) {
+    throw new PreviewUnsupportedError("VIDEO_OUTPUT_INVALID", "Output file must use the .mp4 extension.");
+  }
+  const existing = await lstat(outputFile).catch((error: unknown) => {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return null;
+    throw error;
+  });
+  if (existing && (!existing.isFile() || existing.isSymbolicLink())) {
+    throw new PreviewUnsupportedError("VIDEO_OUTPUT_INVALID", "Output must not be a symlink or directory.");
+  }
+  if (existing && !options.overwrite) {
+    throw new PreviewUnsupportedError("VIDEO_OUTPUT_EXISTS",
+      "Output exists; choose another --out path or use --force to replace after successful encoding.");
+  }
+  const tempFile = join(dirname(outputFile), ".puppetcontrol-" + randomUUID() + ".mp4");
   const args = buildFfmpegArgs({
     framesPattern: join(frames.framesDir, "frame_%04d.png"),
-    outputPath: outputFile,
+    outputPath: tempFile,
     fps: frames.fps,
     frameCount: frames.count,
     ...(frames.audio ? { audio: frames.audio } : {}),
     ...(frames.presentation ? { output: frames.presentation } : {}),
     ...(frames.camera ? { camera: frames.camera } : {}),
   });
-  await execute("ffmpeg", args, process.cwd(), 240_000);
+  try {
+    // FFmpeg can overwrite its unique temporary file only, never the user's old video.
+    await execute("ffmpeg", args, process.cwd(), 240_000);
+    if (options.overwrite) await rename(tempFile, outputFile);
+    else await link(tempFile, outputFile); // EEXIST fails atomically without touching the old file.
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "EEXIST") {
+      throw new PreviewUnsupportedError("VIDEO_OUTPUT_EXISTS",
+        "Another video already exists at this path; no existing file was overwritten.");
+    }
+    throw error;
+  } finally {
+    await unlink(tempFile).catch(() => undefined);
+  }
   return outputFile;
 }

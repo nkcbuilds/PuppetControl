@@ -14,6 +14,7 @@ import { AvatarWorkflowError, importAvatar, buildAvatar } from "../character/ava
 import { prepareLandmarkTask, stageLandmarks, acceptLandmarks } from "../character/landmarks.js";
 import { proposeCodexLandmarks, codexExecutableForPlatform } from "../character/vision-codex.js";
 import { verifyAvatarBuildRecord } from "../character/provenance.js";
+import { requestDrawnVariants, statusDrawnVariants, importDrawnVariants } from "../character/drawn-variants.js";
 
 function print(value: unknown): void {
   process.stdout.write(JSON.stringify(value, null, 2) + "\n");
@@ -27,6 +28,9 @@ function usage(): never {
     "  puppetctl character inspect <character.json>\n" +
     "  puppetctl character import <picture.png> --out <project-dir> --id <character-id>\n" +
     "  puppetctl character build <project-dir> [--force]\n" +
+    "  puppetctl character variants request <project-dir> [variant-id ...]\n" +
+    "  puppetctl character variants status <project-dir>\n" +
+    "  puppetctl character variants import <project-dir> <variant-id ...> [--experimental-short-fade] --reviewed-art\n" +
     "  puppetctl character landmarks assist <project-dir>\n" +
     "  puppetctl character landmarks propose <project-dir> --provider codex\n" +
     "  puppetctl character landmarks stage <project-dir> --proposal <proposal.json>\n" +
@@ -47,7 +51,7 @@ async function run(): Promise<void> {
   if (first === "--help" || first === "help") {
     process.stdout.write(
       "PuppetControl (experimental)\n" +
-      "Available: doctor, character inspect/import/build, landmark assist/propose/stage/accept, audio align, scene validate/plan, single-rig scene preview/render.\n" +
+      "Available: doctor, character inspect/import/build, drawn-variant request/status/import, landmark assist/propose/stage/accept, audio align, scene validate/plan, single-rig scene preview/render.\n" +
       "Not yet available: reliable one-click landmark inference, animated pose bridges, captions, automatic transcription/TTS.\n",
     );
     return;
@@ -72,7 +76,7 @@ async function run(): Promise<void> {
       ffmpegAvailable: ffmpegFound,
       rev2dAvailable,
       codexCliAvailable,
-      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
+      availableFeatures: ["character-inspect", "scene-validate", "transition-policy", "rhubarb-cue-parsing", "rhubarb-align-if-installed", ...(rev2dAvailable ? ["assisted-png-avatar-import", "local-drawn-variants", "agent-landmark-proposal-staging", ...(codexCliAvailable ? ["optional-codex-vision-proposals"] : []), "avatar-review-sheets", "single-rig-preview", "single-rig-voice-render", "pose-family-hard-cut-render", "experimental-shot-framing"] : [])],
       unavailableFeatures: ["animated-pose-bridges", "automatic-landmark-placement", "automatic-transcription", "text-to-speech", "multi-audio-mixing"],
     });
     return;
@@ -119,6 +123,28 @@ async function run(): Promise<void> {
     if (flags.length > 1 || (flags.length === 1 && flags[0] !== "--force")) usage();
     print(await buildAvatar(third, flags[0] === "--force"));
     return;
+  }
+
+  if (first === "character" && second === "variants" && third) {
+    const [project, ...flags] = process.argv.slice(5);
+    if (!project) usage();
+    if (third === "status" && flags.length === 0) {
+      print(await statusDrawnVariants(project));
+      return;
+    }
+    if (third === "request") {
+      print(await requestDrawnVariants(project, flags));
+      return;
+    }
+    if (third === "import" && flags.length >= 2 && flags[flags.length - 1] === "--reviewed-art") {
+      const requested = flags.slice(0, -1);
+      const shortFadeIndex = requested.indexOf("--experimental-short-fade");
+      if (shortFadeIndex >= 0 && shortFadeIndex !== requested.length - 1) usage();
+      const ids = shortFadeIndex >= 0 ? requested.slice(0, -1) : requested;
+      print(await importDrawnVariants(project, ids, process.cwd(), { experimentalShortFade: shortFadeIndex >= 0 }));
+      return;
+    }
+    usage();
   }
 
   if (first === "character" && second === "landmarks" && third) {

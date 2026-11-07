@@ -148,7 +148,12 @@ export async function runRev2D(repo: string, args: string[], timeout = 120_000):
     // Return the upstream validator's precise diagnostics rather than hiding them.
     let output: CommandOutput = {};
     try { output = JSON.parse(failure.stdout ?? "{}") as CommandOutput; } catch { /* not JSON */ }
-    const diagnosticText = output.diagnostics ? JSON.stringify(output.diagnostics).slice(0, 3500) : "";
+    const rejected = Array.isArray(output.checks) ? output.checks
+      .filter((value) => !!value && typeof value === "object" && (value as { ok?: boolean }).ok === false)
+      .map((value) => ({ id: value.id, code: value.code, reason: value.reason, hint: value.hint })) : [];
+    const diagnosticText = Array.isArray(output.diagnostics) && output.diagnostics.length
+      ? JSON.stringify(output.diagnostics).slice(0, 3500)
+      : rejected.length ? JSON.stringify(rejected).slice(0, 3500) : "";
     throw new AvatarWorkflowError(
       "REV2D_AVATAR_FAILED",
       [diagnosticText, failure.stderr, failure.message].filter(Boolean).join("\n").slice(0, 5000),

@@ -31,7 +31,7 @@ It deliberately **revokes previous approval before publishing** the new model. I
 
 Old `review/poses.png`, `review/turn.png`, `review/eyes.png` and `review/mouth.png` may have been generated **before** vectorization. Their presence alone is insufficient evidence for the new eyelid rig.
 
-The vectorize operation now writes `review/vector-eyelids-proof.json` only **after** a real timed Rev2D blink and full/eyes contact sheets have rendered. It copies those three artifacts to a unique `review/vector-eyes-<uuid>/` directory. The proof binds the **exact model SHA-256** from `avatar-build.json` to the SHA-256 hashes of all three review artifacts. `character approve --reviewed` refuses vector geometry without a matching proof, even if its model filename was manually changed.
+The vectorize operation now writes `review/vector-eyelids-proof.json` only **after** a real timed Rev2D blink, full/eyes contact sheets, and 16 actual combined head/gaze/expression renders have completed. It copies those four artifacts to a unique `review/vector-eyes-<uuid>/` directory. The proof binds the **exact model SHA-256** from `avatar-build.json` to the SHA-256 hashes of all **four** review artifacts (full-frame blink sheet, eye blink sheet, timed MP4, and combined head/gaze/expression eye-stress sheet). This is proof format version 2; older version 1 proofs must be regenerated. `character approve --reviewed` refuses vector geometry without a matching proof, even if its model filename was manually changed.
 
 If FFmpeg fails, review files are lost or a generated package becomes stale, rerun:
 
@@ -58,6 +58,12 @@ In this single test, the vector strips eliminate the sharp outward triangular la
 [Watch the 30 FPS continuous vector eyelid blink](media/hana-vector-eyelids-30fps.mp4)
 
 A disposable, unapproved imported Hana project successfully generated the model and hash record with `character eyes vectorize`. An **additional separate QA-only copy** was temporarily marked renderable to exercise the standard first-video path; its 3-second 512×640, 30 FPS, 90-frame H.264 output passed FFprobe acceptance. The real imported test source remains `approved:false`.
+
+## Second art-style trial and combined-expression review
+
+The same vector rig process was applied to independently imported MIT-licensed **Satoko** artwork (Henrik Hanssen, pinned source commit in [third-party notices](THIRD_PARTY_NOTICES.md)). It generated a valid separate model, a 36-frame timed blink, 16 combined head/gaze/mouth/eye renders and a 90-frame full-scene integration video on a disposable QA-only renderable copy. **Visual approval still failed:** Satoko has a thin green/gray near-closed iris trace and simplified lash lines. Compare [matched states](media/satoko-vector-eye-comparison.png) and read [the full second-style report](SECOND_STYLE_EYE_QA.md).
+
+The optional `character qa eye-stress <project>` command exports a **4×4 / 16-case** full-face and eye-crop sheet and a JSON report of the exact parameter combinations. The model-bound review proof now requires the stress-eye sheet along with the two neutral blink sheets and timed MP4. This is additional evidence, not an automated beauty/quality threshold.
 
 ## Remaining gates
 

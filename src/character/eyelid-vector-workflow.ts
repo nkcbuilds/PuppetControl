@@ -17,6 +17,7 @@ import {
   verifyAvatarBuildRecord, writeAvatarBuildRecord,
 } from "./provenance.js";
 import { createBlinkReview } from "./blink-review.js";
+import { createEyeStressReview } from "./eye-stress.js";
 import { publishVectorReviewProof } from "./vector-review-evidence.js";
 import { vectorizeImportedEyelids } from "./eyelid-vector.js";
 
@@ -119,13 +120,17 @@ export async function createVectorEyelidRig(
   let review: Record<string, unknown>;
   try {
     const rendered = await createBlinkReview(project, { root, timed: true });
-    const proof = await publishVectorReviewProof(project, relModel, rendered, root);
+    const stress = await createEyeStressReview(project, root);
+    const proof = await publishVectorReviewProof(project, relModel,
+      { ...rendered, stressSheet: stress.eyeSheet }, root);
     review = {
       video: proof.video,
       eyes: proof.eyes,
       full: proof.full,
       proofFile: proof.proofFile,
+      stress: proof.stress,
       report: rendered.reportPath,
+      stressReport: stress.reportPath,
     };
   } catch (cause) {
     review = {

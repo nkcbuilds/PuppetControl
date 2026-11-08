@@ -18,6 +18,7 @@ import {
   AVATAR_BUILD_RECORD, avatarBuildRecordSchema, verifyAvatarBuildRecord,
 } from "./provenance.js";
 import { createBlinkReview } from "./blink-review.js";
+import { createEyeStressReview } from "./eye-stress.js";
 import { characterSchema } from "../scene/schemas.js";
 
 const HASH = z.string().regex(/^[0-9a-f]{64}$/);
@@ -26,13 +27,14 @@ const evidenceFileSchema = z.strictObject({
   sha256: HASH,
 });
 const proofSchema = z.strictObject({
-  version: z.literal(1),
+  version: z.literal(2),
   kind: z.literal("vector-eyelids"),
   model: evidenceFileSchema,
   artifacts: z.strictObject({
     eyes: evidenceFileSchema,
     full: evidenceFileSchema,
     video: evidenceFileSchema,
+    stress: evidenceFileSchema,
   }),
 });
 type Proof = z.infer<typeof proofSchema>;
@@ -109,9 +111,9 @@ export async function requiresVectorReviewProof(projectDir: string, modelPath: s
 export async function publishVectorReviewProof(
   projectDir: string,
   modelRelative: string,
-  rendered: { eyeSheet: string; fullSheet: string; timedVideo?: string | undefined },
+  rendered: { eyeSheet: string; fullSheet: string; timedVideo?: string | undefined; stressSheet: string },
   root = process.cwd(),
-): Promise<{ proofFile: string; eyes: string; full: string; video: string }> {
+): Promise<{ proofFile: string; eyes: string; full: string; video: string; stress: string }> {
   const project = await checkedPath(root, resolve(root, projectDir));
   if (!isVectorEyelidModelPath(modelRelative)) {
     error("Only an explicitly derived vector eyelid model can publish this review proof");
@@ -127,9 +129,10 @@ export async function publishVectorReviewProof(
     eyes: ["blink-eyes.png", rendered.eyeSheet, "png"],
     full: ["blink-full.png", rendered.fullSheet, "png"],
     video: ["blink-timed-30fps.mp4", rendered.timedVideo, "mp4"],
+    stress: ["expression-eyes.png", rendered.stressSheet, "png"],
   } as const;
   const artifacts = {} as Proof["artifacts"];
-  for (const key of ["eyes", "full", "video"] as const) {
+  for (const key of ["eyes", "full", "video", "stress"] as const) {
     const [name, original, kind] = names[key];
     const source = await checkedPath(root, resolve(original));
     const input = await checkedBytes(source, kind === "mp4" ? 50_000_000 : 25_000_000, kind);
@@ -141,7 +144,7 @@ export async function publishVectorReviewProof(
   }
 
   const proof: Proof = proofSchema.parse({
-    version: 1, kind: "vector-eyelids",
+    version: 2, kind: "vector-eyelids",
     model, artifacts,
   });
   const proofFile = await checkedPath(project, join(project, VECTOR_REVIEW_PROOF));
@@ -159,6 +162,7 @@ export async function publishVectorReviewProof(
     proofFile, eyes: join(project, artifacts.eyes.path),
     full: join(project, artifacts.full.path),
     video: join(project, artifacts.video.path),
+    stress: join(project, artifacts.stress.path),
   };
 }
 
@@ -193,7 +197,7 @@ export async function verifyVectorReviewProof(
   const base = "review/vector-eyes-" + match[1] + "/";
   for (const [kind, filename] of [
     ["eyes", "blink-eyes.png"], ["full", "blink-full.png"],
-    ["video", "blink-timed-30fps.mp4"],
+    ["video", "blink-timed-30fps.mp4"], ["stress", "expression-eyes.png"],
   ] as const) {
     const reference = proof.artifacts[kind];
     requireRelativeEvidencePath(reference.path, base);
@@ -220,7 +224,9 @@ export async function refreshVectorReviewProof(
   }
   await currentModel(project, model);
   const rendered = await createBlinkReview(project, { root, timed: true });
-  const proof = await publishVectorReviewProof(project, model, rendered, root);
+  const stress = await createEyeStressReview(project, root);
+  const proof = await publishVectorReviewProof(project, model,
+    { ...rendered, stressSheet: stress.eyeSheet }, root);
   return {
     status: "review-evidence-refreshed",
     approved: manifest.poseFamilies.some(pose => pose.approved),

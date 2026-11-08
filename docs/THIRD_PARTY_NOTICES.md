@@ -32,4 +32,36 @@ SOFTWARE.
 
 ---
 
+## Anime Character Creator — Satoko illustration
+
+- Source: https://github.com/rhedak/anime-character-creator
+- Pinned commit: 8a52cd146445b1aee4d890df5e44bcf9102cceef
+- Original source file: `ref-out/satoko.png` (800×1000).
+- Use: a locally resized, manually landmarked, **unapproved** second-style import for vector eyelid QA. Only an attributed derived eye comparison crop is included in `docs/media/satoko-vector-eye-comparison.png`; the original full picture and models are not bundled.
+- Original license: MIT License, Copyright (c) 2026 Henrik Hanssen.
+
+### MIT License (Henrik Hanssen)
+
+Copyright (c) 2026 Henrik Hanssen
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
 Rhubarb, FFmpeg, and optional image models are not bundled into the PuppetControl project. Their binaries and weights have their own licenses; see project documentation and upstream sources.

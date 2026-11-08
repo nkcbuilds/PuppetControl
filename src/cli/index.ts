@@ -24,6 +24,7 @@ import { comparePngSequence } from "../character/frame-sequence-qa.js";
 import { createBlinkReview } from "../character/blink-review.js";
 import { createVectorEyelidRig } from "../character/eyelid-vector-workflow.js";
 import { refreshVectorReviewProof } from "../character/vector-review-evidence.js";
+import { createEyeStressReview } from "../character/eye-stress.js";
 import { DEFAULT_LOOK_LIMITS, IMPORTED_INITIAL_LOOK_LIMITS } from "../scene/look-limits.js";
 import { createCueBinding, verifyCueBinding, CueBindingError } from "../audio/cue-provenance.js";
 
@@ -47,6 +48,7 @@ function usage(): never {
     "  puppetctl character variants import <project-dir> <variant-id ...> [--experimental-short-fade|--experimental-stepped-eyes] --reviewed-art\n" +
     "  puppetctl character qa compare <reference.png> <render.png> [--region x,y,w,h]\n" +
     "  puppetctl character qa blink <project-dir> [--timed] [--region x,y,w,h]\n" +
+    "  puppetctl character qa eye-stress <project-dir>\n" +
     "  puppetctl character qa sequence <ordered-frame1.png> <frame2.png> ... [--region x,y,w,h] [--cut-after i,j] [--control-values v1,v2,...]\n" +
     "  puppetctl character landmarks assist <project-dir>\n" +
     "  puppetctl character landmarks propose <project-dir> --provider codex\n" +
@@ -208,6 +210,13 @@ async function run(): Promise<void> {
       return;
     }
     usage();
+  }
+
+  if (first === "character" && second === "qa" && third === "eye-stress") {
+    const [project, ...extra] = process.argv.slice(5);
+    if (!project || project.startsWith("--") || extra.length) usage();
+    print(await createEyeStressReview(project));
+    return;
   }
 
   if (first === "character" && second === "qa" && third === "blink") {
